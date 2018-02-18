@@ -1,50 +1,3 @@
-
-
-proc_ref timoCanti_equivSpring_topPointLoad {*E *I *L *P *delta {k0 1000} {tolerance 1e-4} {maxSteps 10} } {
-		
-	proc_ref fx {*E *I *L *delta *k *P} {
-		set EI [expr $E*$I];
-		set L3 [expr $L*$L*$L];
-		set L4 [expr $L3*$L];
-		set stiff [expr 3*$EI/$L3-9*$EI*$EI/(3*$EI*$L3+$k*$L4)];
-		return [expr $P-$stiff*$delta];
-	}
-	proc_ref dfx {*E *I *L *delta *k} {
-		set EI [expr $E*$I];
-		set L3 [expr $L*$L*$L];
-		set L4 [expr $L3*$L];
-
-		return [expr -$delta*9*$EI*$EI*$L4/(3*$EI*$L3+$k*$L4)/(3*$EI*$L3+$k*$L4)];
-	}
-	
-	
-	set k_prev $k0;
-	set fx_prev [fx E I L delta k_prev P];
-	
-	set step 1;
-	
-	while { [abs $fx_prev] > $tolerance && $step <= $maxSteps } {
-		set fx_prev [fx E I L delta k_prev P];
-		
-		set dfx_prev [dfx E I L delta k_prev];
-		
-		set k_curr [expr $k_prev - $fx_prev/$dfx_prev];
-		
-		set k_prev $k_curr;
-	
-		incr $step;
-	}
-
-	rename fx ""
-	rename dfx ""
-	return $k_curr;
-	
-
-} 
-
-
-
-
 proc_ref timoCanti_x_column_arb { forceDist P Region_ID filename  Es  A_col  I_col  A_br  A_beam   Geom_TransID  massX  {N_col 2} *heights  {h0 1} {x0 0}    {big_x 0} {Node_ID 1000} {Ele_ID 1000}   } {
 
 
@@ -118,7 +71,7 @@ proc_ref timoCanti_x_column_arb { forceDist P Region_ID filename  Es  A_col  I_c
 		}
 		puts "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~";
 		puts "...Trying to find equivalent linear spring for region $Region_ID";
-		set keq [timoCanti_equivSpring_topPointLoad Es Ieff topHeight P topDisp];
+		set keq [expr -3*$Es*$Ieff/($topHeight-3*$Es*$Ieff*$topDisp/$topHeight/$topHeight/$P)];
 		puts "N-R found k = $keq N !";
 		puts "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~";
 		
@@ -130,6 +83,53 @@ proc_ref timoCanti_x_column_arb { forceDist P Region_ID filename  Es  A_col  I_c
 
 
 
+}
 
 
+
+#    ///////////////////////////////////////////////////////////////////////////////////////
+#   ////////////////////////////////////// SCUMS /////////////////////////////////////////
+#  /////////////////////////////////////////////////////////////////////////////////////
+if 0 {
+proc_ref timoCanti_equivSpring_topPointLoad {*E *I *L *P *delta {k0 1000} {tolerance 1e-4} {maxSteps 10} } {
+		
+	proc_ref fx {*E *I *L *delta *k *P} {
+		set EI [expr $E*$I];
+		set L3 [expr $L*$L*$L];
+		set L4 [expr $L3*$L];
+		set stiff [expr 3*$EI/$L3-9*$EI*$EI/(3*$EI*$L3+$k*$L4)];
+		return [expr $P-$stiff*$delta];
+	}
+	proc_ref dfx {*E *I *L *delta *k} {
+		set EI [expr $E*$I];
+		set L3 [expr $L*$L*$L];
+		set L4 [expr $L3*$L];
+
+		return [expr -$delta*9*$EI*$EI*$L4/(3*$EI*$L3+$k*$L4)/(3*$EI*$L3+$k*$L4)];
+	}
+	
+	
+	set k_prev $k0;
+	set fx_prev [fx E I L delta k_prev P];
+	
+	set step 1;
+	
+	while { [abs $fx_prev] > $tolerance && $step <= $maxSteps } {
+		set fx_prev [fx E I L delta k_prev P];
+		
+		set dfx_prev [dfx E I L delta k_prev];
+		
+		set k_curr [expr $k_prev - $fx_prev/$dfx_prev];
+		
+		set k_prev $k_curr;
+	
+		incr $step;
+	}
+
+	rename fx ""
+	rename dfx ""
+	return $k_curr;
+	
+
+} 
 }
