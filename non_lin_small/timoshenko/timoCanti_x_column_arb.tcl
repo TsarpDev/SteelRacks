@@ -27,7 +27,12 @@ proc_ref timoCanti_x_column_arb { forceDist P Region_ID filename  Es  A_col  I_c
 			lineX_forces $Region_ID $topHeight $P;
 		}
 		
-	}	else {
+	}	elseif { $forceDist == "triangLoad"} {
+		pattern Plain $Region_ID Linear {			
+			SPO_x_triang $Region_ID $x0 [expr $P];
+
+		}
+	} else {
 		error_clean "ERROR: Unknown force distribution";
 	}
 	
@@ -71,15 +76,25 @@ proc_ref timoCanti_x_column_arb { forceDist P Region_ID filename  Es  A_col  I_c
 		}
 		puts "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~";
 		puts "...Trying to find equivalent linear spring for region $Region_ID";
-		set keq [expr -3*$Es*$Ieff/($topHeight-3*$Es*$Ieff*$topDisp/$topHeight/$topHeight/$P)];
+		set totP [expr $P*2];
+		set keq [expr -3*$Es*$Ieff/($topHeight-3*$Es*$Ieff*$topDisp/$topHeight/$topHeight/$totP)];
 		puts "N-R found k = $keq N !";
 		puts "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~";
 		
 		
-	} else {
-	}
-
-
+	} elseif { $forceDist == "triangLoad"} {
+		fforeach el $recName {
+			set topDisp [lindex $el 1];
+		}
+		set topDisp [expr $topDisp];
+		set L $topHeight;
+		puts "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~";
+		puts "...Trying to find equivalent linear spring for region $Region_ID";
+		set keq [expr -40*$Es*$Ieff*$L*$L*$L*$P/(11*$P*$L*$L*$L*$L-120*$Es*$Ieff*$topDisp)];
+		puts "N-R found k = $keq N !";
+		puts "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~";
+	
+	} 
 
 
 
