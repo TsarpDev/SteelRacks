@@ -1,0 +1,217 @@
+Current Domain Information
+	Current Time: 341.605
+tCommitted Time: 341.605
+
+NODE DATA: NumNodes: 6
+
+ Node: 1001
+	Coordinates  : 0 0 
+	Disps: 0 0 -0.126906 
+	Velocities   : 0 0 0 
+	commitAccels: 0 0 0 
+	 unbalanced Load: 0 0 0 
+	 reaction: -18387.2 -10409.3 -1.50067e-011 
+	 Eigenvectors: 
+0 0 
+0 0 
+0.00922129 -0.0145429 
+
+	ID : -1 -1 13 
+
+
+ Node: 1002
+	Coordinates  : 1.05 0 
+	Disps: 0 0 0.00150336 
+	Velocities   : 0 0 0 
+	commitAccels: 0 0 0 
+	 unbalanced Load: 0 0 0 
+	 reaction: -59.4578 46408.6 0 
+	 Eigenvectors: 
+0 0 
+0 0 
+0.00922129 0.0145429 
+
+	ID : -1 -1 6 
+
+
+ Node: 1003
+	Coordinates  : 0 1 
+	Disps: 0.130112 -8.27146e-005 -0.136524 
+	Velocities   : 0 0 0 
+	commitAccels: 0 0 0 
+	 unbalanced Load: 341.605 -8999.84 0 
+	 reaction: 6.43922e-010 3.63798e-012 -1.60981e-010 
+	Mass : 
+917.415 0 0 
+0 1e-009 0 
+0 0 1e-009 
+
+	 Rayleigh Factor: alphaM: 0
+	 Rayleigh Forces: 0 0 0 
+	 Eigenvectors: 
+0.00310216 -0.000508527 
+0.000368402 -6.0391e-005 
+-0.0277491 0.0306113 
+
+	ID : 10 11 12 
+
+
+ Node: 1004
+	Coordinates  : 1.05 1 
+	Disps: 0.00133301 -0.000255266 -0.00700576 
+	Velocities   : 0 0 0 
+	commitAccels: 0 0 0 
+	 unbalanced Load: 341.605 -8999.84 0 
+	 reaction: 2.49638e-008 -1.45519e-011 -1.81899e-012 
+	Mass : 
+917.415 0 0 
+0 1e-009 0 
+0 0 1e-009 
+
+	 Rayleigh Factor: alphaM: 0
+	 Rayleigh Forces: 0 0 0 
+	 Eigenvectors: 
+0.00310216 0.000508527 
+-0.000368402 -6.0391e-005 
+-0.0277491 -0.0306113 
+
+	ID : 7 8 9 
+
+
+ Node: 1005
+	Coordinates  : 0 1.5 
+	Disps: 0.199977 -0.000110046 -0.141333 
+	Velocities   : 0 0 0 
+	commitAccels: 0 0 0 
+	 unbalanced Load: 8881.73 -8999.84 0 
+	 reaction: -6.63931e-010 -1.81899e-012 -1.75532e-010 
+	Mass : 
+917.415 0 0 
+0 1e-009 0 
+0 0 1e-009 
+
+	 Rayleigh Factor: alphaM: 0
+	 Rayleigh Forces: 0 0 0 
+	 Eigenvectors: 
+0.0231384 -0.0233399 
+0.000368402 -6.0391e-005 
+-0.0462342 0.0531885 
+
+	ID : 3 4 5 
+
+
+ Node: 1006
+	Coordinates  : 1.05 1.5 
+	Disps: 0.00625408 -0.000282598 -0.0112603 
+	Velocities   : 0 0 0 
+	commitAccels: 0 0 0 
+	 unbalanced Load: 8881.73 -8999.84 0 
+	 reaction: -5.45697e-012 1.63709e-011 -1.81899e-012 
+	Mass : 
+917.415 0 0 
+0 1e-009 0 
+0 0 1e-009 
+
+	 Rayleigh Factor: alphaM: 0
+	 Rayleigh Forces: 0 0 0 
+	 Eigenvectors: 
+0.0231384 0.0233399 
+-0.000368402 -6.0391e-005 
+-0.0462342 -0.0531885 
+
+	ID : 0 1 2 
+
+
+ELEMENT DATA: NumEle: 7
+
+ElasticBeam2d: 11001
+	Connected Nodes: 1001 1003 
+	CoordTransf: 1
+	mass density:  0, cMass: 0
+	End 1 Forces (P V M): 13618.1 -5069.64 -1.50067e-011
+	End 2 Forces (P V M): -13618.1 5069.64 -5069.64
+
+ElasticBeam2d: 11002
+	Connected Nodes: 1003 1005 
+	CoordTransf: 1
+	mass density:  0, cMass: 0
+	End 1 Forces (P V M): 8999.84 10139.3 5069.64
+	End 2 Forces (P V M): -8999.84 -10139.3 -1.75532e-010
+
+ElasticBeam2d: 11003
+	Connected Nodes: 1002 1004 
+	CoordTransf: 1
+	mass density:  0, cMass: 0
+	End 1 Forces (P V M): 42027.1 -4485.16 0
+	End 2 Forces (P V M): -42027.1 4485.16 -4485.16
+
+ElasticBeam2d: 11004
+	Connected Nodes: 1004 1006 
+	CoordTransf: 1
+	mass density:  0, cMass: 0
+	End 1 Forces (P V M): 8999.84 8970.31 4485.16
+	End 2 Forces (P V M): -8999.84 -8970.31 -1.81899e-012
+Element: 12001 type: Truss  iNode: 1001 jNode: 1004 Area: 0.0003048 Mass/Length: 0 cMass: 0 
+	 strain: 0.000544302 axial load: 34839.7 
+	 unbalanced load: -25228.7 -24027.4 0 25228.7 24027.4 0 
+ 	 Material: ElasticPP tag: 11
+  E: 2.1e+011
+  ep: 0
+  Otress: 1.14303e+008 tangent: 2.1e+011
+
+Element: 12002 type: Truss  iNode: 1002 jNode: 1003 Area: 0.0003048 Mass/Length: 0 cMass: 0 
+	 strain: -0.0650181 axial load: -6353.26 
+	 unbalanced load: -4600.64 4381.56 0 4600.64 -4381.56 0 
+ 	 Material: ElasticPP tag: 11
+  E: 2.1e+011
+  ep: -0.0649189
+  Otress: -2.0844e+007 tangent: 0
+
+Element: 13001 type: Truss  iNode: 1003 jNode: 1004 Area: 0.0003048 Mass/Length: 0 cMass: 0 
+	 strain: -0.122647 axial load: -11464.2 
+	 unbalanced load: 11464.2 0 0 -11464.2 -0 0 
+ 	 Material: ElasticPP tag: 12
+  E: 2.1e+011
+  ep: -0.122468
+  Otress: -3.76123e+007 tangent: 0
+
+
+SP_Constraints: numConstraints: 4
+SP_Constraint: 0	 Node: 1001 DOF: 1 ref value: 0 current value: 0
+SP_Constraint: 1	 Node: 1001 DOF: 2 ref value: 0 current value: 0
+SP_Constraint: 2	 Node: 1002 DOF: 1 ref value: 0 current value: 0
+SP_Constraint: 3	 Node: 1002 DOF: 2 ref value: 0 current value: 0
+
+Pressure_Constraints: numConstraints: 0
+
+MP_Constraints: numConstraints: 0
+
+LOAD PATTERNS: numPatterns: 2
+
+Load Pattern: 101
+  Scale Factor: 1
+Constant Series: factor: 1
+  Nodal Loads: 
+Nodal Load: 1003 load : 0 -8999.84 0 
+Nodal Load: 1004 load : 0 -8999.84 0 
+Nodal Load: 1005 load : 0 -8999.84 0 
+Nodal Load: 1006 load : 0 -8999.84 0 
+
+  Elemental Loads: 
+
+  Single Point Constraints: 
+Load Pattern: 200
+  Scale Factor: 1
+Linear Series: constant factor: 1
+  Nodal Loads: 
+Nodal Load: 1003 load : 1 0 0 
+Nodal Load: 1004 load : 1 0 0 
+Nodal Load: 1005 load : 26 0 0 
+Nodal Load: 1006 load : 26 0 0 
+
+  Elemental Loads: 
+
+  Single Point Constraints: 
+
+PARAMETERS: numParameters: 0
+
