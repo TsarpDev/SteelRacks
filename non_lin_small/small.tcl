@@ -258,6 +258,6 @@
 	
 generatePushoverDiagram		"$dataDir/Disp.out"		"$dataDir/Vbase.out" ;
 
-if {[traceYield]} {
+if {[traceYieldInit]} {
 	puts "Done!";
 }

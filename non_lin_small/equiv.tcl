@@ -86,7 +86,7 @@
 	set massX   {0 203.87 203.87 203.87 203.87 203.87 203.87 203.87 203.87 203.87};
 	
 	
-	timoCanti_x_column_arb "topPointLoad" 2000 1 "column1equiv.txt"  $Es  $A_col  $I_col  $A_br  $A_br  $PDeltaTransf  $massX $N_col_akreo heights $h0 $x1 $big_x_akreo ;
+	timoFixed_x_column_arb "topPointLoad" 100000 1 "column1equiv.txt"  $Es  $A_col  $I_col  $A_br  $A_br  $PDeltaTransf  $massX $N_col_akreo heights $h0 $x1 $big_x_akreo ;
 
 	
 	#timoCanti_x_column_arb "topPointLoad" 2000 2 "column2equiv.txt"  $Es  $A_col  $I_col  $A_br  $A_br   $PDeltaTransf  $massX $N_col_akreo heights $h0 $x1 $big_x_akreo ;
