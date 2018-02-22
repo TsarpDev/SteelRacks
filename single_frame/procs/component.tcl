@@ -40,6 +40,8 @@ namespace eval ::region {
 	
 	set start_sub_list { {} {} };
 	set end_sub_list { {} {} };
+	
+	
 }
 
 
@@ -62,6 +64,9 @@ proc AddRegion { Region_ID	 } {
 	set l {{} {}} ;
 	upvar #0 ::region::end_sub_list e;
 	set e {{} {}} ;
+	
+	upvar #0 ::region::removed_elements re;
+	lappend re {}; 
 	
 }
 
