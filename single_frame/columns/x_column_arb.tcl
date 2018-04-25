@@ -1,4 +1,4 @@
-proc_ref	x_column_arb	{ Region_ID  Es  A_col  I_col  A_br  A_beam  TrussMatID  Geom_TransID  massX  {N_col 2} *heights  {h0 1} {x0 0}    {big_x 0} {Node_ID 1000} {Ele_ID 1000}   } {
+proc_ref	x_column_arb	{ Region_ID  *columnTags  *beamTags *bracingTags  *masses *heights  x0 d_col *columns *beams *bracings    {big_x 0} {Node_ID 1000} {Ele_ID 1000}   } {
 
 
 ###################################################################################################
@@ -14,9 +14,6 @@ AddRegion $Region_ID;
 
 	set N_box [expr [llength $heights]-1];	
 
-	if { $N_col <=0 || $N_box <=0} {
-		error_clean "ERROR: In region $Region_ID, number of columns and boxes must be greater than zero!";
-	}
 	
 	if { [expr ($N_box+1)*$N_col] >=$Node_ID } {
 		error_clean "ERROR: Number of nodes at region $Region_ID is $Node_ID or greater.\nPlease modify function x_column. Suggested node numbering: 1001,1002..."; 
@@ -30,19 +27,19 @@ AddRegion $Region_ID;
 	}
 	
 
-	if {[llength $massX] == 0 || [llength $heights] == 0 } {
-		error_clean "ERROR: In region $Region_ID. List massX and heights must have at least one element";
+	if {[llength $masses] == 0 || [llength $heights] == 0 } {
+		error_clean "ERROR: In region $Region_ID. List masses and heights must have at least one element";
 	}
 	
 
-	if { ([llength $massX] ne 1) && ([llength $massX] ne [llength $heights]) } {
-		error_clean "ERROR: In region $Region_ID. Length(massX) must be equal to Length(heigths).\nYou gave Length(massX) = [llength $massX] and Length(heights) = [llength $heights]";
+	if { ([llength $masses] ne 1) && ([llength $masses] ne [llength $heights]) } {
+		error_clean "ERROR: In region $Region_ID. Length(masses) must be equal to Length(heigths).\nYou gave Length(masses) = [llength $masses] and Length(heights) = [llength $heights]";
 	}
 	
-	if {[llength $massX] == 1} {
-		set tmpMass [lindex $massX 0];
+	if {[llength $masses] == 1} {
+		set tmpMass [lindex $masses 0];
 		for {set i 1} {$i < [llength $heights]} {incr i} {
-			lappend massX $tmpMass;
+			lappend masses $tmpMass;
 		}
 	}
 	
@@ -66,9 +63,9 @@ AddRegion $Region_ID;
 		
 		for {set j 1} {$j <= $N_col} {incr j} {
 			
-			if { [lindex $massX $i] > 0 } {
-				node	[expr $Region_ID*$Node_ID+$current_node]		[expr $x0+$h0*($j-1)]		$H_temp 	-mass [lindex $massX $i] $Negligible $Negligible;
-				write_node_with_mass [expr $Region_ID*$Node_ID+$current_node] [lindex $massX $i] $Negligible $Negligible;
+			if { [lindex $masses $i] > 0 } {
+				node	[expr $Region_ID*$Node_ID+$current_node]		[expr $x0+$h0*($j-1)]		$H_temp 	-mass [lindex $masses $i] $Negligible $Negligible;
+				write_node_with_mass [expr $Region_ID*$Node_ID+$current_node] [lindex $masses $i] $Negligible $Negligible;
 			} else {
 				node	[expr $Region_ID*$Node_ID+$current_node]		[expr $x0+$h0*($j-1)]		$H_temp;	
 			}
