@@ -14,6 +14,16 @@ proc addNamespace added_space {
 	lappend tmp_Name $added_space;
 }
 
+###################################################################################################
+#          TRANSFORMATIONS												  
+###################################################################################################
+	set CorotTransf 2;
+	set PDeltaTransf 1;
+	set LinearTransf 0;
+
+	geomTransf Linear $LinearTransf;
+	geomTransf PDelta $PDeltaTransf; 
+	geomTransf Corotational  $CorotTransf;
 
 ###################################################################################################
 #          REGIONS													  
@@ -29,6 +39,9 @@ namespace eval ::region {
 	
 	set matTags {};
 	set matProperties {};
+	
+	set elasticTags {};
+	set elasticProperties {};
 	
 	set removed_elements {};
 	
@@ -164,6 +177,12 @@ proc getBoundaryNode {Region_ID} {
 
 }
 
+proc getRegionTotalNodes {RegionID} {
+	set bottom [lindex [getBoundaryNode $Region_ID] 0];
+	set top	   [lindex [getBoundaryNode $Region_ID] 1];
+	return [expr $top-$bottom+1]
+}
+
 proc addNodes { start_n end_n } {
 
 	upvar #0 ::region::start_node s_list;
@@ -255,7 +274,83 @@ proc printMaterials {} {
 	}
 	puts "============================================================\n";
 	
-
 }
 
 
+###################################################################################################
+#          ELASTIC SECTIONS											  
+###################################################################################################
+
+
+proc addElasticSection { secID} {
+	upvar #0 ::region::elasticTags tags;
+	foreach t $tags {
+		if {$t == $secID} {
+			return 0;
+		}
+	}
+	lappend tags $secID;
+	return $secID;
+}
+
+proc getElasticSectionPos {secTag} {
+	upvar #0 ::region::elasticTags tags;
+	for {set i 0} {$i<[llength $tags]} {incr i} {
+		if { [lindex $tags $i] == $secTag } {
+			return $i;
+		}
+	}
+	return -1;
+}
+
+
+proc addElasticSectionProperties {secTag E A I} {
+
+	set i [getElasticSectionPos $secTag];
+	if {$i ne -1} {
+		upvar #0 ::region::elasticProperties elasticProp;
+		sub_lappend_mod elasticProp $i $secTag $E $A $I;
+	}	else {
+		error_clean "Elastic section with tag $secTag does not exist";
+	}
+	
+
+}
+
+proc printElasticSections {} {
+	upvar #0 ::region::elasticProperties elasticProp;
+	
+	puts "==================== Printing Elastic Sections ====================";
+	foreach s $elasticProp {
+		set secTag [lindex $s 0]
+		puts "-------Section: $secTag";
+		puts "E = [getElasticE $secTag]"
+		puts "A = [getElasticA $secTag]"
+		puts "I = [getElasticI $secTag]"
+		puts "-------\n";
+		
+	}
+	puts "============================================================\n";
+	
+}
+
+proc getElasticE {secTag} {
+	upvar #0 ::region::elasticProperties elasticProp;
+	return [lindex [lindex $elasticProp [getElasticSectionPos $secTag] ] 1];
+}
+
+proc getElasticA {secTag} {
+	upvar #0 ::region::elasticProperties elasticProp;
+	return [lindex [lindex $elasticProp [getElasticSectionPos $secTag] ] 2];
+}
+
+proc getElasticI {secTag} {
+	upvar #0 ::region::elasticProperties elasticProp;
+	return [lindex [lindex $elasticProp [getElasticSectionPos $secTag] ] 3];
+}
+
+
+
+###################################################################################################
+#          FIBER SECTIONS									  
+###################################################################################################

@@ -348,3 +348,9 @@ proc getElasticI {secTag} {
 	upvar #0 ::region::elasticProperties elasticProp;
 	return [lindex [lindex $elasticProp [getElasticSectionPos $secTag] ] 3];
 }
+
+
+
+###################################################################################################
+#          FIBER SECTIONS									  
+###################################################################################################

@@ -20,7 +20,7 @@
 	source booleans/booleans_header.tcl;
 	source display/display_header.tcl;
 	source non_linears/non_linears_header.tcl;
-
+	source sections/sections_header.tcl;
 
 
 ###################################################################################################
@@ -38,37 +38,40 @@
 		file mkdir $dataDir; 						# create output folder
 	}
 
+	
+###################################################################################################
+#          Define Materials
+###################################################################################################
+
+
+set S235 1 
+uniaxialMaterial Steel02 $S235 [expr 235*$MPa] [expr 210.0*$GPa] 0.0 18 0.925 0.15
+
+set S275 2 
+uniaxialMaterial Steel02 $S275 [expr 275*$MPa] [expr 210.0*$GPa] 0.0 18 0.925 0.15
+
+set S355 3 
+uniaxialMaterial Steel02 $S355 [expr 355*$MPa] [expr 210.0*$GPa] 0.0 18 0.925 0.15
+
+
 ###################################################################################################
 #          Define Sections
 ###################################################################################################
 
 
-
 ################ COLUMNS ################
 
-set Es [expr 210*$GPa];
-
-set RHS1 1; # 120x80x10 S355
-set Acol1 3.60e-3;
-set Icol1 3.32e-6;
-
-set RHS2 2; # 120x80x6 S355
-set Acol2 2.256e-3;
-set Icol2 4.382e-6;
-
-set RHS3 3; # 120x80x4 S355
-set Acol3 1.536e-3;
-set Icol3 3.090e-6;
+set RHS120x80x4xS355 3 ;
 
 
-addElasticSection $RHS1
-addElasticSectionProperties $RHS1 $Es $Acol1 $Icol1;
+RHS $RHS120x80x4xS355  $S355  [expr 80*$mm]  [expr 120*$mm]  [expr 4*$mm]  [expr 4*$mm]  0.0  0.0  0.0  
 
-addElasticSection $RHS2
-addElasticSectionProperties $RHS2 $Es $Acol2 $Icol2;
+set RHS120x80x6xS355 2 ; 
+RHS $RHS120x80x6xS355  $S355  [expr 80*$mm]  [expr 120*$mm]  [expr 6*$mm]  [expr 6*$mm]  0  0  0 
 
-addElasticSection $RHS3
-addElasticSectionProperties $RHS3 $Es $Acol3 $Icol3;
+set RHS120x80x10xS355 1 ; 
+RHS $RHS120x80x10xS355  $S355  [expr 80*$mm]  [expr 120*$mm]  [expr 10*$mm]  [expr 10*$mm]  0  0  0  
+
 
 
 set	h0	[expr	60	*$mm	]
@@ -101,82 +104,47 @@ set columns { 1 1 1 1 1 2 2 2 2 3 3 3 3 3 3 3 3 3 3 3}
 ################ BRACINGS - small ################
 
 
-set L40x40x5_S355 4; # L40x40x5 S355
-set Abr1 3.75e-4
-set Ibr1 5.561e-8
+set L40x40x5xS355 4; # L40x40x5 S355
 
-set L40x40x5_S275 5; # L120x80x6 S275
-set Abr2 3.75e-4
-set Ibr2 5.561e-8
+Angle $L40x40x5xS355  $S355  [expr 40*$mm]  [expr 40*$mm]  [expr 5*$mm]  [expr 5*$mm]  0  0  0  
+ 
 
-set L35x35x4_S275 6; # L35x35x4 S275
-set Abr3 2.64e-4
-set Ibr3 3.026e-8
-
-set L35x35x4_S235 7; # L35x35x4 S235
-set Abr4 2.64e-4
-set Ibr4 3.026e-8
-
-set L30x30x4_S235 8; # L30x30x4 S235
-set Abr5 2.24e-4
-set Ibr5 1.855e-8
+set L40x40x4xS275 5; # L40x40x4 S275
+Angle $L40x40x4xS275  $S275  [expr 40*$mm]  [expr 40*$mm]  [expr 4*$mm]  [expr 4*$mm]  0  0  0  
 
 
-addElasticSection $L40x40x5_S355
-addElasticSectionProperties $L40x40x5_S355 $Es $Abr1 $Ibr1;
 
-addElasticSection $L40x40x5_S275
-addElasticSectionProperties $L40x40x5_S275 $Es $Abr2 $Ibr2;
+set L35x35x4xS275 6; # L35x35x4 S275
+Angle $L35x35x4xS275  $S275  [expr 35*$mm]  [expr 35*$mm]  [expr 4*$mm]  [expr 4*$mm]   0  0  0 
 
-addElasticSection $L35x35x4_S275
-addElasticSectionProperties $L35x35x4_S275 $Es $Abr3 $Ibr3;
+  
 
-addElasticSection $L35x35x4_S235
-addElasticSectionProperties $L35x35x4_S235 $Es $Abr4 $Ibr4;
+set L35x35x4xS235 7; # L35x35x4 S235
+Angle $L35x35x4xS235  $S235  [expr 35*$mm]  [expr 35*$mm]  [expr 4*$mm]  [expr 4*$mm]   0  0  0  
 
-addElasticSection $L30x30x4_S235
-addElasticSectionProperties $L30x30x4_S235 $Es $Abr5 $Ibr5;
+set L30x30x4xS235 8; # L30x30x4 S235
+Angle $L30x30x4xS235  $S235  [expr 30*$mm]  [expr 30*$mm]  [expr 4*$mm]  [expr 4*$mm]   0  0  0  
 
 set bracings_small { 4 4 4 5 5 5 5 5 5 6 7 7 7 8 8 8 8 8 8 }
 
 
 ################ BRACINGS - big ################
 
-set L40x40x5_S355 9; # L40x40x5 S355
-set Abr1_big 3.75e-4
-set Ibr1_big 5.561e-8
+set L40x40x5xS355_big 9; # L40x40x5 S355
+Angle $L40x40x5xS355_big  $S355  [expr 40*$mm]  [expr 40*$mm]  [expr 5*$mm]  [expr 5*$mm]  0  0  0  
 
 set RHS30x30x2punto5xS355 10;  #  RHS30x30x2.5 S355
-set Abr2_big 2.75e-4
-set Ibr2_big 3.495e-8
+RHS $RHS30x30x2punto5xS355  $S355  [expr 30*$mm]  [expr 30*$mm]  [expr 2.5*$mm]  [expr 2.5*$mm]  0  0  0 
 
 set RHS30x30x2punto5xS275 11;  #  RHS30x30x2.5 S275
-set Abr3_big 2.75e-4
-set Ibr3_big 3.495e-8
+RHS $RHS30x30x2punto5xS275  $S275  [expr 30*$mm]  [expr 30*$mm]  [expr 2.5*$mm]  [expr 2.5*$mm]  0  0  0  
 
 set RHS30x30x2punto5xS235 12;  #  RHS30x30x2.5 S235
-set Abr4_big 2.75e-4
-set Ibr4_big 3.495e-8
+RHS $RHS30x30x2punto5xS235  $S235  [expr 30*$mm]  [expr 30*$mm]  [expr 2.5*$mm]  [expr 2.5*$mm]  0  0  0  
 
 set RHS30x30x2xS235 13;  #  RHS30x30x2 S235
-set Abr5_big 2.24e-4
-set Ibr5_big 2.942e-8
+RHS $RHS30x30x2xS235  $S235  [expr 30*$mm]  [expr 30*$mm]  [expr 2.0*$mm]  [expr 2.0*$mm]  0  0  0 
 
-
-addElasticSection $L40x40x5_S355
-addElasticSectionProperties $L40x40x5_S355 $Es $Abr1_big $Ibr1_big;
-
-addElasticSection $RHS30x30x2punto5xS355
-addElasticSectionProperties $RHS30x30x2punto5xS355 $Es $Abr2_big $Ibr2_big;
-
-addElasticSection $RHS30x30x2punto5xS275
-addElasticSectionProperties $RHS30x30x2punto5xS275 $Es $Abr3_big $Ibr3_big;
-
-addElasticSection $RHS30x30x2punto5xS235
-addElasticSectionProperties $RHS30x30x2punto5xS235 $Es $Abr4_big $Ibr4_big;
-
-addElasticSection $RHS30x30x2xS235
-addElasticSectionProperties $RHS30x30x2xS235 $Es $Abr5_big $Ibr5_big;
 
 set bracings_big { 9 10 10 10 10 10 11 11 11 11 11 12 12 12 13 13 13 13 13 }
 
@@ -188,13 +156,8 @@ set bracings_big { 9 10 10 10 10 10 11 11 11 11 11 12 12 12 13 13 13 13 13 }
 ################ BEAMS ################
 
 
-set DC80x50x3 14; # Double Channel 80x50x3 S355
-set Abeam 7.14e-4
-set Ibeam 6.03e-7
-
-
-addElasticSection $DC80x50x3
-addElasticSectionProperties $DC80x50x3 $Es $Abeam $Ibeam;
+set DC80x50x3xS355 14; # Double Channel 80x50x3 S355
+DoubleChannel $DC80x50x3xS355  $S355  [expr 80*$mm]  [expr 105*$mm]  [expr 3*$mm]  [expr 3*$mm]  0  0  [expr 5*$mm]
 
 
 set beams { 14 14 14 14 14 14 14 14 14 14 14 14 14 14 14 14 14 14 14}
@@ -202,19 +165,14 @@ set beams { 14 14 14 14 14 14 14 14 14 14 14 14 14 14 14 14 14 14 14}
 
 ################ ZIC-BEAM ################
 
+set Es [expr 210*$GPa]
+
 set DA45x45x4 15; #Double Angle 45x45x4 S355
-set Ah_beam 3.44e-4;
-set Ih_beam 6.666e-8
+DoubleAngle $DA45x45x4  $S355  [expr 45*$mm]  [expr 96*$mm]  [expr 4*$mm]  [expr 4*$mm]  0  0  [expr 6*$mm] 
 
 set DA55x55x4 16; #Double Angle 55x55x4 S355
-set Av_beam 4.24e-4;
-set Iv_beam 1.246e-7;
+DoubleAngle $DA55x55x4  $S355  [expr 55*$mm]  [expr 55*$mm]  [expr 4*$mm]  [expr 4*$mm]  0  0  [expr 6*$mm] 
 
-addElasticSection $DA45x45x4
-addElasticSectionProperties $DA45x45x4 $Es $Ah_beam $Ih_beam
-
-addElasticSection $DA55x55x4
-addElasticSectionProperties $DA55x55x4 $Es $Av_beam $Iv_beam
 
 set horizontal_truss  15
 
@@ -230,19 +188,21 @@ set vertical_truss 16
 
 ############ COLUMNS #########################################################################################################
 set heights "0.0 $h0 $h1 $h2 $h3 $h4 $h5 $h6 $h7 $h8 $h9 $h10 $h11 $h12	$h13 $h14 $h15 $h16 $h17 $h18 $h19";
-set massX   "0	203.87	203.87	203.87	203.87	203.87	203.87	203.87	203.87	203.87	203.87	203.87	203.87	203.87	203.87	203.87	203.87	203.87	203.87	203.87	203.87";
+#set massX   "0	203.87	203.87	203.87	203.87	203.87	203.87	203.87	203.87	203.87	203.87	203.87	203.87	203.87	203.87	203.87	203.87	203.87	203.87	203.87	203.87";
+set massX   "0	50	50	50	50	50	50	50	50	50	50	50	50	50	50	50	50	50	50	50	50";
 
-x_column_arb	1   massX heights  0.0  1.2 columns beams bracings_small   0
 
-x_column_arb	2   massX heights  3.1  1.2 columns beams bracings_big   1
+x_column_NL_FIBER	1   massX heights  0.0  1.2 columns beams bracings_small   0
 
-x_column_arb	3   massX heights  7.4  1.2 columns beams bracings_big   1
+x_column_NL_FIBER	2   massX heights  3.1  1.2 columns beams bracings_big   1
 
-x_column_arb	4   massX heights  11.7  1.2 columns beams bracings_big   1
+x_column_NL_FIBER	3   massX heights  7.4  1.2 columns beams bracings_big   1
 
-x_column_arb	5   massX heights  16.0  1.2 columns beams bracings_big   1
+x_column_NL_FIBER	4   massX heights  11.7  1.2 columns beams bracings_big   1
 
-x_column_arb	6   massX heights  20.3  1.2 columns beams bracings_small   0
+x_column_NL_FIBER	5   massX heights  16.0  1.2 columns beams bracings_big   1
+
+x_column_NL_FIBER	6   massX heights  20.3  1.2 columns beams bracings_small   0
 
 ##############################################################################################################################
 
@@ -275,7 +235,7 @@ set y7 			[expr $h19*$m];							# starting y0 to build beam 7
 set h0_start 	[expr 1000.0*$mm];
 set h0_end   	[expr 1300.0*$mm];
 
-zic_beam_truss	 	7  	$horizontal_truss   $vertical_truss   $mass_beam   lengths $h0_start $h0_end $x7 $y7;
+zic_beam_NL_FIBER	 	7  	$horizontal_truss   $vertical_truss   $mass_beam   lengths $h0_start $h0_end $x7 $y7;
 
 
 ###############################################################################################################################
@@ -337,7 +297,9 @@ PrintRegions;
 ###################################################################################################
 #          Apply Gravity Loads
 ###################################################################################################
+
 if 0 {
+
 # apply gravity loads
 #command: pattern PatternType $PatternID TimeSeriesType
 	pattern Plain 101 Constant {
@@ -362,7 +324,6 @@ if 0 {
 # maintain constant gravity loads and reset time to zero
 	loadConst -time 0.0
 	puts "Gravity loads applied successfully!"
-
 }
 
 ############################################################################
@@ -397,11 +358,9 @@ if 0 {
 #          Run pushover													  
 ###################################################################################################	
 
-if {$analysisType == "pushover"} { 
-	puts "Running Pushover..."
-# assign lateral loads and create load pattern:  use ASCE 7-10 distribution
-	set Fx_top [expr 1*$N];
-	pattern Plain 200 Linear {			
+
+set Fx_top [expr 1*$N];
+pattern Plain 200 Linear {			
 #command SPO_x_eigen $Region_ID $X_coord $Fx_top
 		 #SPO_x_eigen 1 $x1 $Fx_top
 		 
@@ -415,41 +374,25 @@ if {$analysisType == "pushover"} {
 		 
 		 #SPO_x_eigen 6 $x6 $Fx_top
 		 
-		 load [getNode 7 0 23.2] 1.0 0.0 0.0
-	}
-	
-# display deformed shape:
-	set ViewScale 1;
-	DisplayModel2D DeformedShape $ViewScale 700	0	1000	1000;	# display deformed shape, the scaling factor needs to be adjusted for each model
+		 load [getNode 7 0 24.2] 1.0 0.0 0.0
+}
 
-# displacement parameters
-	set IDctrlNode [getNode 7 0 23.2];				# node where disp is read for disp control
-	
-	
-	set IDctrlDOF 1;					# degree of freedom read for disp control (1 = x displacement)
-	set Dmax [expr 0.05*$mm];					# maximum displacement of pushover: 10% roof drift
-	set Dincr [expr 0.001*$mm];				# displacement increment
+set IDctrlNode [getNode 7 0 24.2];	
 
-# analysis commands
-	constraints Plain;					# how it handles boundary conditions
-	numberer RCM;						# renumber dof's to minimize band-width (optimization)
-	system BandGeneral;					# how to store and solve the system of equations in the analysis (large model: try UmfPack)
-	test NormUnbalance 1.0e-6 400;		# type of convergence criteria with tolerance, max iterations
-	algorithm Newton;					# use Newton's solution algorithm: updates tangent stiffness at every iteration
-	integrator DisplacementControl  $IDctrlNode   $IDctrlDOF $Dincr;	# use displacement-controlled analysis
-	analysis Static;					# define type of analysis: static for pushover
-	set Nsteps [expr int($Dmax/$Dincr)];# number of pushover analysis steps
-	set ok [analyze $Nsteps];			# this will return zero if no convergence problems were encountered
-	puts "Pushover complete";			# display this message in the command window
-} 	
-	
+RunPushover2Converge $IDctrlNode [expr 5*$mm] [expr 0.1*$mm] 
+
+
 ###################################################################################################
 #          CLEAN ALL
 ###################################################################################################
 
 	cleanall;
 	
-	
+
+###################################################################################################
+#          POST PROCESSING
+###################################################################################################
+
 addReactions $Vnames  "$dataDir/Vbase.out";
 
 generatePushoverDiagram		"$dataDir/Disp.out"		"$dataDir/Vbase.out";

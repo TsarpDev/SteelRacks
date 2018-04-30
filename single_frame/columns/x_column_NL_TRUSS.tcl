@@ -1,4 +1,4 @@
-proc_ref	nonLinearX_column_arb	{ Region_ID  Es  fy  A_col  I_col  A_br  I_br  A_beam  I_beam   Geom_TransID  massX  {N_col 2} *heights  {h0 1} {x0 0}    {big_x 0}  {imp_coef "c"}   {Node_ID 1000} {Ele_ID 1000}   } {
+proc_ref	x_column_NL_TRUSS	{ Region_ID  Es  fy  A_col  I_col  A_br  I_br  A_beam  I_beam   Geom_TransID  massX  {N_col 2} *heights  {h0 1} {x0 0}    {big_x 0}  {imp_coef "c"}   {Node_ID 1000} {Ele_ID 1000}   } {
 
 
 ###################################################################################################

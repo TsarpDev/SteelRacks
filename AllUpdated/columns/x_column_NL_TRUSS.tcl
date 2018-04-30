@@ -1,4 +1,4 @@
-proc_ref	x_columnMassTop	{ Region_ID  Es  A_col  I_col  A_br  A_beam  TrussMatID  Geom_TransID  massX  {N_col 2} {N_box 20}  {h0 1}  {a 1}  {x0 0}  {y0 0}  *Special_Boxes  {big_x 0} {Node_ID 1000} {Ele_ID 1000}   } {
+proc_ref	x_column_NL_TRUSS	{ Region_ID  Es  fy  A_col  I_col  A_br  I_br  A_beam  I_beam   Geom_TransID  massX  {N_col 2} *heights  {h0 1} {x0 0}    {big_x 0}  {imp_coef "c"}   {Node_ID 1000} {Ele_ID 1000}   } {
 
 
 ###################################################################################################
@@ -8,10 +8,12 @@ proc_ref	x_columnMassTop	{ Region_ID  Es  A_col  I_col  A_br  A_beam  TrussMatID
 AddRegion $Region_ID;
 
 
-
-
 #############################################
 #         Initial Checks					#
+
+
+	set N_box [expr [llength $heights]-1];	
+
 	if { $N_col <=0 || $N_box <=0} {
 		error_clean "ERROR: In region $Region_ID, number of columns and boxes must be greater than zero!";
 	}
@@ -21,12 +23,32 @@ AddRegion $Region_ID;
 	}
 	
 	
-	set Negligible 1e-9;	
-	set N_special [llength [lindex $Special_Boxes 0]];
-	set Htot	[expr ($N_box-$N_special)*$a] ;	
-	for {set j 0} {$j < $N_special} {incr j} {
-		set Htot [expr $Htot + [lindex $Special_Boxes 1 $j] ];
+	for {set i 1} { $i < [llength $heights]} {incr i} {
+		if { [lindex $heights $i]<= [lindex $heights [expr $i-1] ] } {
+			error_clean "ERROR: In region $Region_ID, heights in arbitrary columns must be sorted."; 
+		}
 	}
+	
+
+	if {[llength $massX] == 0 || [llength $heights] == 0 } {
+		error_clean "ERROR: In region $Region_ID. List massX and heights must have at least one element";
+	}
+	
+
+	if { ([llength $massX] ne 1) && ([llength $massX] ne [llength $heights]) } {
+		error_clean "ERROR: In region $Region_ID. Length(massX) must be equal to Length(heigths).\nYou gave Length(massX) = [llength $massX] and Length(heights) = [llength $heights]";
+	}
+	
+	if {[llength $massX] == 1} {
+		set tmpMass [lindex $massX 0];
+		for {set i 1} {$i < [llength $heights]} {incr i} {
+			lappend massX $tmpMass;
+		}
+	}
+	
+	
+	set Negligible 1e-9;	
+	
 
 	
 ###################################################################################################
@@ -35,42 +57,29 @@ AddRegion $Region_ID;
 
 #	node numbering: A(000000)ij. A=Region_ID and ij is the number of the node. 
 #	example:	523 = Node 23 in region 5. If Node_ID=1000 then 5023. 
-	set H_temp	0;
+
 	set current_node	1;
-	for {set i 1} {$i <= $N_box} {incr i} {
-		#checking if it is a special box
-		set ladder		$a;
-		for {set j 0} {$j < $N_special} {incr j} {
-				if {  [lindex $Special_Boxes 0 $j] == $i } {
-					set ladder [lindex $Special_Boxes 1 $j];
-					break;
-				}
-		}
-		set H_temp [expr $H_temp+$ladder];
-		if {$i==1} {
-			for {set j 1} {$j <= $N_col} {incr j} {
-				# command:  node nodeID xcoord ycoord -mass mass_dof1 mass_dof2 mass_dof3
-				
-				node	[expr $Region_ID*$Node_ID+$current_node]		[expr $x0+$h0*($j-1)]		$y0; 
-				incr current_node;
-			}
-		} 
+	for {set i 0} {$i <= $N_box} {incr i} {
+
+		set H_temp		[lindex $heights $i ];
+		
+		
 		for {set j 1} {$j <= $N_col} {incr j} {
 			
-			if {$i == $N_box} {	
-				node	[expr $Region_ID*$Node_ID+$current_node]		[expr $x0+$h0*($j-1)]		[expr $y0+$H_temp]  -mass $massX $Negligible $Negligible;
+			if { [lindex $massX $i] > 0 } {
+				node	[expr $Region_ID*$Node_ID+$current_node]		[expr $x0+$h0*($j-1)]		$H_temp 	-mass [lindex $massX $i] $Negligible $Negligible;
+				write_node_with_mass [expr $Region_ID*$Node_ID+$current_node] [lindex $massX $i] $Negligible $Negligible;
 			} else {
-				node	[expr $Region_ID*$Node_ID+$current_node]		[expr $x0+$h0*($j-1)]		[expr $y0+$H_temp]	-mass $massX $Negligible $Negligible;
-				write_node_with_mass [expr $Region_ID*$Node_ID+$current_node] $massX $Negligible $Negligible;
+				node	[expr $Region_ID*$Node_ID+$current_node]		[expr $x0+$h0*($j-1)]		$H_temp;	
 			}
 			incr current_node;
 		}
+		
 	}
-	
 	
 	addNodes [expr $Region_ID*$Node_ID+1]	[expr $Region_ID*$Node_ID+$current_node-1];
 	
-
+	
 ###################################################################################################
 #          ELEMENT GENERATION													  
 ###################################################################################################
@@ -107,6 +116,11 @@ AddRegion $Region_ID;
 #         Generate Bracing                  #
 	set current_ele		[expr $Reg_Ele_ID+$BR*$Ele_ID];
 	set increment [expr $N_col];
+	
+	set TrussMatID [expr $Region_ID*10+1];
+	
+	
+	
 
 	if { $big_x == 0 } {
 		for	{set j 1} {$j < $N_col} {incr j} {
@@ -114,12 +128,18 @@ AddRegion $Region_ID;
 			for {set i 1} {$i <= $N_box} {incr i} {
 				set node_j [expr $node_i+$increment];
 				incr current_ele;
-				element truss $current_ele [expr $node_i] [expr $node_j+1] $A_br $TrussMatID;
+				
+				
+				trussBuckling	$current_ele	[expr $node_i]	[expr $node_j+1]	$TrussMatID $Es		$A_br	$I_br	$fy	 $imp_coef;
+				
+				
+
 				
 				write_element $current_ele [expr $node_i] [expr $node_j+1];
 				
 				incr current_ele;
-				element truss $current_ele [expr $node_i+1] [expr $node_j] $A_br $TrussMatID;
+				
+				trussBuckling	$current_ele	[expr $node_i+1] [expr $node_j]	$TrussMatID $Es		$A_br	$I_br	$fy	 $imp_coef;
 				
 				write_element $current_ele [expr $node_i+1] [expr $node_j];
 				
@@ -140,12 +160,14 @@ AddRegion $Region_ID;
 			
 				set node_j [expr $node_i+$increment];
 				incr current_ele;
-				element truss $current_ele [expr $node_i] [expr $node_j+1] $A_br $TrussMatID;
+				
+				trussBuckling	$current_ele	[expr $node_i] [expr $node_j+1]  $TrussMatID 	$Es		$A_br	$I_br	$fy	 $imp_coef;
 				
 				write_element $current_ele [expr $node_i] [expr $node_j+1];
 				
 				incr current_ele;
-				element truss $current_ele [expr $node_i+1] [expr $node_j] $A_br $TrussMatID;
+				
+				trussBuckling	$current_ele	[expr $node_i+1] [expr $node_j]  $TrussMatID 	$Es		$A_br	$I_br	$fy	 $imp_coef;
 				
 				write_element $current_ele [expr $node_i+1] [expr $node_j];
 				
@@ -160,13 +182,15 @@ AddRegion $Region_ID;
 				set node_j [expr $node_i+$increment];
 				incr current_ele;
 				if {$switch ==0} {
-					element truss $current_ele [expr $node_i] [expr $node_j+1] $A_br $TrussMatID;
+					
+					trussBuckling	$current_ele	[expr $node_i] [expr $node_j+1]  $TrussMatID 	$Es		$A_br	$I_br	$fy	 $imp_coef;
 					
 					write_element $current_ele [expr $node_i] [expr $node_j+1];
 					
 					set switch 1;
 				} else {
-					element truss $current_ele [expr $node_i+1] [expr $node_j] $A_br $TrussMatID;
+					
+					trussBuckling	$current_ele	 [expr $node_i+1] [expr $node_j]   $TrussMatID 	$Es		$A_br	$I_br	$fy	 $imp_coef;
 					
 					write_element $current_ele [expr $node_i+1] [expr $node_j];
 					
@@ -178,11 +202,17 @@ AddRegion $Region_ID;
 	}
 	#set Tot_br	$current_ele;
 	
+	
+	
 	addElements "X Bracing"	[expr $Reg_Ele_ID+$BR*$Ele_ID+1]	[expr $current_ele];
 	
 	
 #############################################
 #         Generate Beam Bracing             #
+
+	
+	set TrussMatID [expr $Region_ID*10+2];
+	
 	set current_ele		[expr $Reg_Ele_ID+$BEAM*$Ele_ID];
 	set increment [expr $N_col];
 	
@@ -191,8 +221,9 @@ AddRegion $Region_ID;
 		for {set i 1} {$i <= $N_box} {incr i} {
 			set node_j [expr $node_j+$increment];
 			incr current_ele;
-			element truss	$current_ele  	$node_j  [expr $node_j+1]  $A_beam $TrussMatID;
 			
+			trussBuckling	$current_ele	 $node_j  [expr $node_j+1]    $TrussMatID 	$Es		$A_beam	$I_beam	$fy	 $imp_coef;
+						
 			write_element $current_ele $node_j  [expr $node_j+1];
 		}
 	}
@@ -213,14 +244,13 @@ AddRegion $Region_ID;
 
 
 
-	
-
 
 CloseRegion;
 
-
-
 }
+
+
+
 
 
 

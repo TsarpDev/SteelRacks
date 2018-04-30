@@ -1,4 +1,4 @@
-proc_ref	x_column_arb	{ Region_ID   *masses *heights  x0  h0 *columns *beams *bracings    {big_x 0} {Node_ID 1000} {Ele_ID 1000}  {InternalNode_ID 1000  } } {
+proc_ref	x_column_NL_FIBER	{ Region_ID   *masses *heights  x0  h0 *columns *beams *bracings    {big_x 0} {Node_ID 1000} {Ele_ID 1000}  {InternalNode_ID 1000  } {nIntPt 3} {maxIters 20} {tolIter 1.e-8}} {
 
 
 ###################################################################################################
@@ -93,7 +93,6 @@ if {$big_x == 0} {
 		for {set j 1} {$j <= $N_col} {incr j} {
 			
 			if { [lindex $masses $i] > 0 } {
-				
 				if { [expr $j%2] == 0 && $N_col == 3} {
 					node	[expr $RegionNode_ID+$current_node]		[expr $x0+$h0*($j-1)]		$H_temp 	-mass [expr 2*$mass_temp] $Negligible $Negligible;
 					write_node_with_mass [expr $RegionNode_ID+$current_node] [expr 2*$mass_temp] $Negligible $Negligible;
@@ -135,13 +134,9 @@ if {$big_x == 0} {
 			incr current_ele;
 			
 			set sectionTag [lindex $columns [expr $i-1]]
-			set A_col [getElasticA $sectionTag]
-			set Es [getElasticE $sectionTag]
-			set I_col [getElasticI $sectionTag]
+
+			element nonlinearBeamColumn   $current_ele  	$node_i  $node_j $nIntPt  $sectionTag  1 -iter $maxIters $tolIter
 			
-			
-			
-			element elasticBeamColumn	$current_ele  	$node_i  $node_j  $A_col $Es $I_col 1;
 			
 			write_element $current_ele $node_i $node_j;
 			
@@ -171,9 +166,7 @@ if {$big_x == 0} {
 				set node_i	[expr $RegionNode_ID + $j + $increment * $i];
 				
 				set sectionTag [lindex $bracings [expr $i-1]]
-				set A_br [getElasticA $sectionTag]
-				set Es [getElasticE $sectionTag]
-				set I_br [getElasticI $sectionTag]
+		
 				
 				
 				############################### FIRST BRACE ##############################	[expr $node_i] [expr $node_j+1]
@@ -193,7 +186,10 @@ if {$big_x == 0} {
 				set y_j [expr [nodeCoord $node_j 2]];
 				node	[expr $internal_nodeJ]		$x_j	$y_j
 				
-				element elasticBeamColumn	$current_ele  	$internal_nodeI  $internal_nodeJ  $A_br $Es $I_br 2;
+				
+				element nonlinearBeamColumn   $current_ele  	$internal_nodeI  $internal_nodeJ $nIntPt  $sectionTag  2 -iter $maxIters $tolIter
+				
+				#element elasticBeamColumn	$current_ele  	$internal_nodeI  $internal_nodeJ  $A_br $Es $I_br 2;
 				
 				write_element $current_ele $node_i $node_j;
 				
@@ -218,7 +214,8 @@ if {$big_x == 0} {
 				set y_j [expr [nodeCoord $node_j 2]];
 				node	[expr $internal_nodeJ]		$x_j	$y_j
 				
-				element elasticBeamColumn	$current_ele  	$internal_nodeI  $internal_nodeJ  $A_br $Es $I_br 2;
+				element nonlinearBeamColumn   $current_ele  	$internal_nodeI  $internal_nodeJ $nIntPt  $sectionTag  2 -iter $maxIters $tolIter
+				#element elasticBeamColumn	$current_ele  	$internal_nodeI  $internal_nodeJ  $A_br $Es $I_br 2;
 
 				write_element $current_ele $node_i $node_j;
 				
@@ -240,10 +237,7 @@ if {$big_x == 0} {
 		
 		
 			set sectionTag [lindex $bracings 0]
-			set A_br [getElasticA $sectionTag]
-			set Es [getElasticE $sectionTag]
-			set I_br [getElasticI $sectionTag]
-		
+
 			
 			
 			############################### FIRST BRACE ##############################	[expr $node_i] [expr $node_j+1]
@@ -268,19 +262,15 @@ if {$big_x == 0} {
 			set x_j [expr [nodeCoord $node_j 1]];
 			set y_j [expr [nodeCoord $node_j 2]];
 			node	[expr $internal_nodeJ]		$x_j	$y_j
-				
-			element elasticBeamColumn	$current_ele  	$internal_nodeI  $internal_nodeJ  $A_br $Es $I_br 2;
+			
+			element nonlinearBeamColumn   $current_ele  	$internal_nodeI  $internal_nodeJ $nIntPt  $sectionTag  2 -iter $maxIters $tolIter
+			#element elasticBeamColumn	$current_ele  	$internal_nodeI  $internal_nodeJ  $A_br $Es $I_br 2;
 				
 			write_element $current_ele $node_i $node_j;
 				
 			equalDOF $node_i $internal_nodeI 1 2
 			equalDOF $node_j $internal_nodeJ 1 2
 			
-			
-			
-			## element truss $current_ele [expr $node_i] [expr $node_j+1] $A_br $TrussMatID;
-				
-			## write_element $current_ele [expr $node_i] [expr $node_j+1];
 			
 			
 			############################### SECOND BRACE ##############################	[expr $node_i+1] [expr $node_j]
@@ -300,8 +290,10 @@ if {$big_x == 0} {
 			set x_j [expr [nodeCoord $node_j 1]];
 			set y_j [expr [nodeCoord $node_j 2]];
 			node	[expr $internal_nodeJ]		$x_j	$y_j
-				
-			element elasticBeamColumn	$current_ele  	$internal_nodeI  $internal_nodeJ  $A_br $Es $I_br 2;
+			
+
+			element nonlinearBeamColumn   $current_ele  	$internal_nodeI  $internal_nodeJ $nIntPt  $sectionTag  2 -iter $maxIters $tolIter			
+			#element elasticBeamColumn	$current_ele  	$internal_nodeI  $internal_nodeJ  $A_br $Es $I_br 2;
 
 			write_element $current_ele $node_i $node_j;
 				
@@ -309,11 +301,7 @@ if {$big_x == 0} {
 			equalDOF $node_j $internal_nodeJ 1 2
 			
 			
-				
-			##element truss $current_ele [expr $node_i+1] [expr $node_j] $A_br $TrussMatID;
-				
-			##write_element $current_ele [expr $node_i+1] [expr $node_j];
-				
+		
 			
 				
 			
@@ -334,9 +322,7 @@ if {$big_x == 0} {
 				
 				
 				set sectionTag [lindex $bracings [expr $i-2]]
-				set A_br [getElasticA $sectionTag]
-				set Es [getElasticE $sectionTag]
-				set I_br [getElasticI $sectionTag]
+
 				
 				incr current_ele;
 				
@@ -360,7 +346,8 @@ if {$big_x == 0} {
 					
 					node	[expr $internal_nodeJ]		$x_j	$y_j
 				
-					element elasticBeamColumn	$current_ele  	$internal_nodeI  $internal_nodeJ  $A_br $Es $I_br 2;
+					element nonlinearBeamColumn   $current_ele  	$internal_nodeI  $internal_nodeJ $nIntPt  $sectionTag  2 -iter $maxIters $tolIter
+					#element elasticBeamColumn	$current_ele  	$internal_nodeI  $internal_nodeJ  $A_br $Es $I_br 2;
 
 					write_element $current_ele $node_i $node_j;
 				
@@ -389,7 +376,8 @@ if {$big_x == 0} {
 					
 					node	[expr $internal_nodeJ]		$x_j	$y_j
 				
-					element elasticBeamColumn	$current_ele  	$internal_nodeI  $internal_nodeJ  $A_br $Es $I_br 2;
+					element nonlinearBeamColumn   $current_ele  	$internal_nodeI  $internal_nodeJ $nIntPt  $sectionTag  2 -iter $maxIters $tolIter
+					#element elasticBeamColumn	$current_ele  	$internal_nodeI  $internal_nodeJ  $A_br $Es $I_br 2;
 
 					write_element $current_ele $node_i $node_j;
 				
@@ -426,10 +414,7 @@ if {$big_x == 0} {
 		
 			
 			set sectionTag [lindex $beams [expr $i-1]]
-			set A_beam [getElasticA $sectionTag]
-			set Es [getElasticE $sectionTag]
-			set I_beam [getElasticI $sectionTag]
-			
+
 
 			
 			set node_i	[expr $RegionNode_ID + $j + $increment * $i];
@@ -452,9 +437,8 @@ if {$big_x == 0} {
 			node	[expr $internal_nodeJ]		$x_j	$y_j
 			
 			
-			#element truss	$current_ele  	$node_j  [expr $node_j+1]  $A_beam $TrussMatID;
-			
-			element elasticBeamColumn	$current_ele  	$internal_nodeI  $internal_nodeJ  $A_beam $Es $I_beam 0;
+			element nonlinearBeamColumn   $current_ele  	$internal_nodeI  $internal_nodeJ $nIntPt  $sectionTag  0 -iter $maxIters $tolIter
+			#element elasticBeamColumn	$current_ele  	$internal_nodeI  $internal_nodeJ  $A_beam $Es $I_beam 0;
 			
 			write_element $current_ele $node_i  $node_j;
 			
@@ -490,5 +474,7 @@ CloseRegion;
 
 
 }
+
+
 
 

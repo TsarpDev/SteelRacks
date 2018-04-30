@@ -93,8 +93,14 @@ if {$big_x == 0} {
 		for {set j 1} {$j <= $N_col} {incr j} {
 			
 			if { [lindex $masses $i] > 0 } {
-				node	[expr $RegionNode_ID+$current_node]		[expr $x0+$h0*($j-1)]		$H_temp 	-mass $mass_temp $Negligible $Negligible;
-				write_node_with_mass [expr $RegionNode_ID+$current_node] $mass_temp $Negligible $Negligible;
+				
+				if { [expr $j%2] == 0 && $N_col == 3} {
+					node	[expr $RegionNode_ID+$current_node]		[expr $x0+$h0*($j-1)]		$H_temp 	-mass [expr 2*$mass_temp] $Negligible $Negligible;
+					write_node_with_mass [expr $RegionNode_ID+$current_node] [expr 2*$mass_temp] $Negligible $Negligible;
+				} else {
+					node	[expr $RegionNode_ID+$current_node]		[expr $x0+$h0*($j-1)]		$H_temp 	-mass $mass_temp $Negligible $Negligible;
+					write_node_with_mass [expr $RegionNode_ID+$current_node] $mass_temp $Negligible $Negligible;
+				}
 			} else {
 				node	[expr $RegionNode_ID+$current_node]		[expr $x0+$h0*($j-1)]		$H_temp;	
 			}
