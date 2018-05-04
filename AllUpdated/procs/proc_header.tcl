@@ -9,3 +9,4 @@ source procs/convert_mass.tcl
 source procs/lineY_nodes.tcl
 source procs/lineX_nodes.tcl
 source procs/RunPushover2Converge_REV.tcl
+source procs/generateImperfectionPoint.tcl

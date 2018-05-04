@@ -263,9 +263,7 @@ PrintRegions;
 
 
 
-	DisplayModel2D NodeNumbers	5	700	0	1000	1000;
-
-
+	DisplayModel2D DeformedShape 5	700	0	1000	1000;
 
 ###################################################################################################
 #          Analysis
@@ -379,7 +377,7 @@ pattern Plain 200 Linear {
 
 set IDctrlNode [getNode 7 0 24.2];	
 
-RunPushover2Converge $IDctrlNode [expr 5*$mm] [expr 0.1*$mm] 
+RunPushover2Converge $IDctrlNode [expr 130*$mm] [expr 0.5*$mm] 
 
 
 ###################################################################################################

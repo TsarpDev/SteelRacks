@@ -1,4 +1,4 @@
-proc_ref	x_column_NL_FIBER	{ Region_ID   *masses *heights  x0  h0 *columns *beams *bracings    {big_x 0} {Node_ID 1000} {Ele_ID 1000}  {InternalNode_ID 1000  } {nIntPt 3} {maxIters 20} {tolIter 1.e-8}} {
+proc_ref	x_column_NL_FIBER	{ Region_ID   *masses *heights  x0  h0 *columns *beams *bracings    {big_x 0} {imp 200} {Node_ID 1000} {Ele_ID 1000}  {InternalNode_ID 1000  } {nIntPt 3} {maxIters 20} {tolIter 1.e-8} } {
 
 
 ###################################################################################################
@@ -108,9 +108,9 @@ if {$big_x == 0} {
 		
 	}
 	
-	addNodes [expr $Region_ID*$Node_ID+1]	[expr $RegionNode_ID+$current_node-1];
+	#addNodes [expr $Region_ID*$Node_ID+1]	[expr $RegionNode_ID+$current_node-1];
 	
-	
+
 ###################################################################################################
 #          ELEMENT GENERATION													  
 ###################################################################################################
@@ -187,18 +187,25 @@ if {$big_x == 0} {
 				node	[expr $internal_nodeJ]		$x_j	$y_j
 				
 				
-				element nonlinearBeamColumn   $current_ele  	$internal_nodeI  $internal_nodeJ $nIntPt  $sectionTag  2 -iter $maxIters $tolIter
+				set imp_nod [generateImperfectionPointID [expr $RegionNode_ID+$current_node] $internal_nodeI $internal_nodeJ $imp]
+				incr current_node
 				
-				#element elasticBeamColumn	$current_ele  	$internal_nodeI  $internal_nodeJ  $A_br $Es $I_br 2;
+				#element nonlinearBeamColumn   $current_ele  	$internal_nodeI  $internal_nodeJ $nIntPt  $sectionTag  2 -iter $maxIters $tolIter
+				incr current_ele;
+				element nonlinearBeamColumn   $current_ele  	$internal_nodeI  $imp_nod $nIntPt  $sectionTag  2 -iter $maxIters $tolIter
+				write_element $current_ele $node_i $imp_nod;
 				
-				write_element $current_ele $node_i $node_j;
+				
+				incr current_ele;
+				element nonlinearBeamColumn   $current_ele  	$imp_nod  $internal_nodeJ $nIntPt  $sectionTag  2 -iter $maxIters $tolIter
+				write_element $current_ele $imp_nod $node_j;
 				
 				equalDOF $node_i $internal_nodeI 1 2
 				equalDOF $node_j $internal_nodeJ 1 2
 			
 				############################### SECOND BRACE ##############################	[expr $node_i+1] [expr $node_j]
 				
-				incr current_ele;
+				
 				
 				incr node_i;
 				
@@ -214,13 +221,23 @@ if {$big_x == 0} {
 				set y_j [expr [nodeCoord $node_j 2]];
 				node	[expr $internal_nodeJ]		$x_j	$y_j
 				
-				element nonlinearBeamColumn   $current_ele  	$internal_nodeI  $internal_nodeJ $nIntPt  $sectionTag  2 -iter $maxIters $tolIter
-				#element elasticBeamColumn	$current_ele  	$internal_nodeI  $internal_nodeJ  $A_br $Es $I_br 2;
-
-				write_element $current_ele $node_i $node_j;
+				
+				set imp_nod [generateImperfectionPointID [expr $RegionNode_ID+$current_node] $internal_nodeI $internal_nodeJ $imp]
+				incr current_node
+				
+				incr current_ele;
+				element nonlinearBeamColumn   $current_ele  	$internal_nodeI  $imp_nod $nIntPt  $sectionTag  2 -iter $maxIters $tolIter
+				write_element $current_ele $node_i $imp_nod;
+				
+				incr current_ele;
+				element nonlinearBeamColumn   $current_ele  	$imp_nod  $internal_nodeJ $nIntPt  $sectionTag  2 -iter $maxIters $tolIter
+				write_element $current_ele $imp_nod $node_j;
+			
 				
 				equalDOF $node_i $internal_nodeI 1 2 
 				equalDOF $node_j $internal_nodeJ 1 2 
+				
+				
 
 			}
 		}
@@ -242,7 +259,6 @@ if {$big_x == 0} {
 			
 			############################### FIRST BRACE ##############################	[expr $node_i] [expr $node_j+1]
 			
-			incr current_ele;
 			
 			
 			set node_i	[expr $RegionNode_ID + $j + $increment]; 
@@ -263,19 +279,29 @@ if {$big_x == 0} {
 			set y_j [expr [nodeCoord $node_j 2]];
 			node	[expr $internal_nodeJ]		$x_j	$y_j
 			
-			element nonlinearBeamColumn   $current_ele  	$internal_nodeI  $internal_nodeJ $nIntPt  $sectionTag  2 -iter $maxIters $tolIter
-			#element elasticBeamColumn	$current_ele  	$internal_nodeI  $internal_nodeJ  $A_br $Es $I_br 2;
+			
+			
+			set imp_nod [generateImperfectionPointID [expr $RegionNode_ID+$current_node] $internal_nodeI $internal_nodeJ $imp]
+			incr current_node
+			
+			
+			incr current_ele;
+			element nonlinearBeamColumn   $current_ele  	$internal_nodeI  $imp_nod $nIntPt  $sectionTag  2 -iter $maxIters $tolIter
+			write_element $current_ele $node_i $imp_nod;
 				
-			write_element $current_ele $node_i $node_j;
+			incr current_ele;
+			element nonlinearBeamColumn   $current_ele  	$imp_nod  $internal_nodeJ $nIntPt  $sectionTag  2 -iter $maxIters $tolIter
+			write_element $current_ele $imp_nod $node_j;
+			
 				
-			equalDOF $node_i $internal_nodeI 1 2
-			equalDOF $node_j $internal_nodeJ 1 2
+			equalDOF $node_i $internal_nodeI 1 2 
+			equalDOF $node_j $internal_nodeJ 1 2 
 			
 			
 			
 			############################### SECOND BRACE ##############################	[expr $node_i+1] [expr $node_j]
 			
-			incr current_ele;
+			
 
 				
 			incr node_i;
@@ -291,14 +317,23 @@ if {$big_x == 0} {
 			set y_j [expr [nodeCoord $node_j 2]];
 			node	[expr $internal_nodeJ]		$x_j	$y_j
 			
-
-			element nonlinearBeamColumn   $current_ele  	$internal_nodeI  $internal_nodeJ $nIntPt  $sectionTag  2 -iter $maxIters $tolIter			
-			#element elasticBeamColumn	$current_ele  	$internal_nodeI  $internal_nodeJ  $A_br $Es $I_br 2;
-
-			write_element $current_ele $node_i $node_j;
+			
+			
+			set imp_nod [generateImperfectionPointID [expr $RegionNode_ID+$current_node] $internal_nodeI $internal_nodeJ $imp]
+			incr current_node
+			
+			
+			incr current_ele;
+			element nonlinearBeamColumn   $current_ele  	$internal_nodeI  $imp_nod $nIntPt  $sectionTag  2 -iter $maxIters $tolIter
+			write_element $current_ele $node_i $imp_nod;
 				
-			equalDOF $node_i $internal_nodeI 1 2
-			equalDOF $node_j $internal_nodeJ 1 2
+			incr current_ele;
+			element nonlinearBeamColumn   $current_ele  	$imp_nod  $internal_nodeJ $nIntPt  $sectionTag  2 -iter $maxIters $tolIter
+			write_element $current_ele $imp_nod $node_j;
+			
+				
+			equalDOF $node_i $internal_nodeI 1 2 
+			equalDOF $node_j $internal_nodeJ 1 2 
 			
 			
 		
@@ -346,13 +381,21 @@ if {$big_x == 0} {
 					
 					node	[expr $internal_nodeJ]		$x_j	$y_j
 				
-					element nonlinearBeamColumn   $current_ele  	$internal_nodeI  $internal_nodeJ $nIntPt  $sectionTag  2 -iter $maxIters $tolIter
-					#element elasticBeamColumn	$current_ele  	$internal_nodeI  $internal_nodeJ  $A_br $Es $I_br 2;
-
-					write_element $current_ele $node_i $node_j;
+					set imp_nod [generateImperfectionPointID [expr $RegionNode_ID+$current_node] $internal_nodeI $internal_nodeJ $imp]
+					incr current_node
+			
+			
+					incr current_ele;
+					element nonlinearBeamColumn   $current_ele  	$internal_nodeI  $imp_nod $nIntPt  $sectionTag  2 -iter $maxIters $tolIter
+					write_element $current_ele $node_i $imp_nod;
 				
-					equalDOF $node_i $internal_nodeI 1 2
-					equalDOF $node_j $internal_nodeJ 1 2
+					incr current_ele;
+					element nonlinearBeamColumn   $current_ele  	$imp_nod  $internal_nodeJ $nIntPt  $sectionTag  2 -iter $maxIters $tolIter
+					write_element $current_ele $imp_nod $node_j;
+			
+				
+					equalDOF $node_i $internal_nodeI 1 2 
+					equalDOF $node_j $internal_nodeJ 1 2 
 		
 					set switch 1;
 					
@@ -376,13 +419,21 @@ if {$big_x == 0} {
 					
 					node	[expr $internal_nodeJ]		$x_j	$y_j
 				
-					element nonlinearBeamColumn   $current_ele  	$internal_nodeI  $internal_nodeJ $nIntPt  $sectionTag  2 -iter $maxIters $tolIter
-					#element elasticBeamColumn	$current_ele  	$internal_nodeI  $internal_nodeJ  $A_br $Es $I_br 2;
-
-					write_element $current_ele $node_i $node_j;
+					set imp_nod [generateImperfectionPointID [expr $RegionNode_ID+$current_node] $internal_nodeI $internal_nodeJ $imp]
+					incr current_node
+			
+			
+					incr current_ele;
+					element nonlinearBeamColumn   $current_ele  	$internal_nodeI  $imp_nod $nIntPt  $sectionTag  2 -iter $maxIters $tolIter
+					write_element $current_ele $node_i $imp_nod;
 				
-					equalDOF $node_i $internal_nodeI 1 2
-					equalDOF $node_j $internal_nodeJ 1 2
+					incr current_ele;
+					element nonlinearBeamColumn   $current_ele  	$imp_nod  $internal_nodeJ $nIntPt  $sectionTag  2 -iter $maxIters $tolIter
+					write_element $current_ele $imp_nod $node_j;
+			
+				
+					equalDOF $node_i $internal_nodeI 1 2 
+					equalDOF $node_j $internal_nodeJ 1 2 
 					
 					
 					
@@ -450,8 +501,12 @@ if {$big_x == 0} {
 	#set Tot_beam	$current_ele;
 	addElements "Ver Bracing"	[expr $Reg_Ele_ID+$BEAM*$Ele_ID+1]	[expr $current_ele];
 	
+	
+###################################################################################################
+#               ADD NODES												  
+###################################################################################################
 
-
+addNodes [expr $Region_ID*$Node_ID+1]	[expr $RegionNode_ID+$current_node-1];
 	
 ###################################################################################################
 #               APPLY FIXITY												  
@@ -474,6 +529,10 @@ CloseRegion;
 
 
 }
+
+
+
+
 
 
 
