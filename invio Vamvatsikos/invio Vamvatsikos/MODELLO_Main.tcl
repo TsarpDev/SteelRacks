@@ -174,7 +174,7 @@ set Qcopds2 [expr $cop*$ds2]
 set Qpalletne 6.8
 set Qpalletni 13.6
 
-
+if 0 {
 pattern Plain 2000 Linear {
 
 load 101 0 [expr  -($pRHS120x80x10*$Ly60/2)] 0
@@ -550,11 +550,33 @@ load 21022 0 [expr -($pDA45x45x4*$ds1/2+$pDA55x55x4*($Ly1000/2+$d1/2))-$Qbar500-
 
 }
 
+# Gravity-analysis: load-controlled static analysis
+	set Tol 1.0e-6;							# convergence tolerance for test
+	constraints Plain;						# how it handles boundary conditions
+	numberer RCM;							# renumber dof's to minimize band-width (optimization)
+	system BandGeneral;						# how to store and solve the system of equations in the analysis (large model: try UmfPack)
+	test NormDispIncr $Tol 6;				# determine if convergence has been achieved at the end of an iteration step
+	algorithm Newton;						# use Newton's solution algorithm: updates tangent stiffness at every iteration
+	set NstepGravity 10;					# apply gravity in 10 steps
+	set DGravity [expr 1.0/$NstepGravity];	# load increment
+	integrator LoadControl $DGravity;		# determine the next time step for an analysis
+	analysis Static;						# define type of analysis: static or transient
+	analyze $NstepGravity;					# apply gravity
 
+# maintain constant gravity loads and reset time to zero
+	loadConst -time 0.0
+	puts "Model Built"
+
+	
+}
 recorder Node -file $dataDir/Disp.out -time -node 1022 -dof 1 disp;
 		
 		
 recorder Node -file $dataDir/Vbase.out -node 101 102 401 501 601 801 901 1001 1201 1301 1401 1601 1701 1801 2001 2101   -dof 1 reaction;
 
-RunPushover2Converge 1022 0.05 0.001
+
+pattern Plain 3000 Linear {
+	load 1022 0.01 0.0 0.0
+}
+RunPushover2Converge 1022 130 0.05
 
