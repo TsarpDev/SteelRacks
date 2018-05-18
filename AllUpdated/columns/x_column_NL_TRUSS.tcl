@@ -122,6 +122,7 @@ if {$big_x == 0} {
 	set BR  2;
 	set BEAM 3;
 	
+
 #############################################
 #         Generate Columns					#
 	set current_ele		[expr $Reg_Ele_ID+$COL*$Ele_ID];
@@ -134,9 +135,13 @@ if {$big_x == 0} {
 			incr current_ele;
 			
 			set sectionTag [lindex $columns [expr $i-1]]
-
-			element nonlinearBeamColumn   $current_ele  	$node_i  $node_j $nIntPt  $sectionTag  1 -iter $maxIters $tolIter
+			set A_col [getElasticA $sectionTag]
+			set Es [getElasticE $sectionTag]
+			set I_col [getElasticI $sectionTag]
 			
+			
+			
+			element elasticBeamColumn	$current_ele  	$node_i  $node_j  $A_col $Es $I_col 1;
 			
 			write_element $current_ele $node_i $node_j;
 			
@@ -333,7 +338,10 @@ if {$big_x == 0} {
 		
 			
 			set sectionTag [lindex $beams [expr $i-1]]
-
+			set A_beam [getElasticA $sectionTag]
+			set Es [getElasticE $sectionTag]
+			set I_beam [getElasticI $sectionTag]
+			
 
 			
 			set node_i	[expr $RegionNode_ID + $j + $increment * $i];
@@ -356,8 +364,9 @@ if {$big_x == 0} {
 			node	[expr $internal_nodeJ]		$x_j	$y_j
 			
 			
-			element nonlinearBeamColumn   $current_ele  	$internal_nodeI  $internal_nodeJ $nIntPt  $sectionTag  0 -iter $maxIters $tolIter
-			#element elasticBeamColumn	$current_ele  	$internal_nodeI  $internal_nodeJ  $A_beam $Es $I_beam 0;
+			#element truss	$current_ele  	$node_j  [expr $node_j+1]  $A_beam $TrussMatID;
+			
+			element elasticBeamColumn	$current_ele  	$internal_nodeI  $internal_nodeJ  $A_beam $Es $I_beam 0;
 			
 			write_element $current_ele $node_i  $node_j;
 			
@@ -369,6 +378,10 @@ if {$big_x == 0} {
 	#set Tot_beam	$current_ele;
 	addElements "Ver Bracing"	[expr $Reg_Ele_ID+$BEAM*$Ele_ID+1]	[expr $current_ele];
 	
+
+	
+
+
 	
 ###################################################################################################
 #               ADD NODES												  
