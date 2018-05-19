@@ -1,4 +1,5 @@
 source sections/SectionProcedures.tcl
+source sections/getProp.tcl
 
 ###			_____
 ###		   | 	 |

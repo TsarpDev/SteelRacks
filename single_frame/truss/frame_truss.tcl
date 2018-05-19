@@ -172,6 +172,7 @@ set bracings_big { 11 12 12 12 12 12 13 13 13 13 13 14 14 14 15 15 15 16 16 }
 ################ BEAMS ################
 
 
+
 set DC80x50x3 17; # Double Channel 80x50x3 S355
 set Abeam 1.0446e-3
 set Ibeam 1.0925e-6
@@ -183,24 +184,6 @@ addElasticSectionProperties $DC80x50x3 $Es $Abeam $Ibeam;
 
 set beams { 17 17 17 17 17 17 17 17 17 17 17 17 17 17 17 17 17 17 17}
 
-
-
-################ ZIC-BEAM ################
-
-set Es [expr 210*$GPa]
-
-if 0 {
-set DA45x45x4 18; #Double Angle 45x45x4 S355
-DoubleAngle $DA45x45x4  $S355  [expr 45*$mm]  [expr 96*$mm]  [expr 4*$mm]  [expr 4*$mm]  0  0  [expr 6*$mm] 
-
-set DA55x55x4 19; #Double Angle 55x55x4 S355
-DoubleAngle $DA55x55x4  $S355  [expr 55*$mm]  [expr 55*$mm]  [expr 4*$mm]  [expr 4*$mm]  0  0  [expr 6*$mm] 
-
-
-set horizontal_truss  18
-
-set vertical_truss 19
-}
 
 
 ################ ZIC-BEAM ################
@@ -238,17 +221,17 @@ set heights "0.0 $h0 $h1 $h2 $h3 $h4 $h5 $h6 $h7 $h8 $h9 $h10 $h11 $h12	$h13 $h1
 set massX   "0	50	50	50	50	50	50	50	50	50	50	50	50	50	50	50	50	50	50	50	50";
 
 
-x_column_NL_TRUSS	1   massX heights  0.0  1.2 columns beams bracings_small   0
+x_column_NL_FULLY_TRUSS	1   massX heights  0.0  1.2 columns beams bracings_small   0
 
-x_column_NL_TRUSS	2   massX heights  3.1  1.2 columns beams bracings_big   1
+x_column_NL_FULLY_TRUSS	2   massX heights  3.1  1.2 columns beams bracings_big   1
 
-x_column_NL_TRUSS	3   massX heights  7.4  1.2 columns beams bracings_big   1
+x_column_NL_FULLY_TRUSS	3   massX heights  7.4  1.2 columns beams bracings_big   1
 
-x_column_NL_TRUSS	4   massX heights  11.7  1.2 columns beams bracings_big   1
+x_column_NL_FULLY_TRUSS	4   massX heights  11.7  1.2 columns beams bracings_big   1
 
-x_column_NL_TRUSS	5   massX heights  16.0  1.2 columns beams bracings_big   1
+x_column_NL_FULLY_TRUSS	5   massX heights  16.0  1.2 columns beams bracings_big   1
 
-x_column_NL_TRUSS	6   massX heights  20.3  1.2 columns beams bracings_small   0
+x_column_NL_FULLY_TRUSS	6   massX heights  20.3  1.2 columns beams bracings_small   0
 
 ##############################################################################################################################
 
@@ -283,7 +266,7 @@ set h0_end   	[expr 1300.0*$mm];
 
 #zic_beam_NL_FIBER	 	7  	$horizontal_truss   $vertical_truss   $mass_beam   lengths $h0_start $h0_end $x7 $y7;
 
-zic_beam_truss	 	7  	$horizontal_truss   $vertical_truss   $mass_beam   lengths $h0_start $h0_end $x7 $y7;
+zic_beam_FULLY_TRUSS	 	7  	$horizontal_truss   $vertical_truss   $mass_beam   lengths $h0_start $h0_end $x7 $y7;
 
 
 ###############################################################################################################################
