@@ -274,8 +274,6 @@ if {$big_x == 0} {
 				set sectionTag [lindex $bracings [expr $i-2]]
 
 				
-				incr current_ele;
-				
 				
 				if {$switch ==0} {
 				
