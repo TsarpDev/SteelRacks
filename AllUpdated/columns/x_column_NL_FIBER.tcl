@@ -173,9 +173,7 @@ if {$big_x == 0} {
 				
 				set node_j [expr $node_i + $increment + 1];
 				
-				incr current_ele;
-				
-				
+		
 				set internal_nodeI [expr $node_i*$InternalNode_ID+4];
 				set x_i [expr [nodeCoord $node_i 1]];
 				set y_i [expr [nodeCoord $node_i 2]];
@@ -358,9 +356,6 @@ if {$big_x == 0} {
 				
 				set sectionTag [lindex $bracings [expr $i-2]]
 
-				
-				incr current_ele;
-				
 				
 				if {$switch ==0} {
 				
