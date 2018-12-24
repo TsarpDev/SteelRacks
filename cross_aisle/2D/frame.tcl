@@ -1,0 +1,572 @@
+
+###################################################################################################
+#          Delete some data
+###################################################################################################
+	wipe all;							# clear memory of past model definitions
+
+	if {[file exists frame2D.out]} {
+		file delete frame2D.out
+	}
+	if {[file exists Concentrated-Pushover-Output]} {
+		file delete -force -- Concentrated-Pushover-Output
+	}
+	if {[file exists Concentrated-Dynamic-Output]} {
+		file delete -force -- Concentrated-Dynamic-Output
+	}
+	if {[file exists Region_Output]} {
+		file delete -force -- Region_Output
+	}
+
+###################################################################################################
+#          Define Analysis Type
+###################################################################################################
+	set Analysis "2D";
+	
+# Define type of analysis:  "pushover" = pushover;  "dynamic" = dynamic
+	set analysisType "pushover1";
+	#set analysisType "pushover";
+	#set analysisType "eigenvalue";
+
+	if {$analysisType == "pushover"} {
+		set dataDir Concentrated-Pushover-Output;	# name of output folder
+		file mkdir $dataDir; 						# create output folder
+	}
+	if {$analysisType == "dynamic"} {
+		set dataDir Concentrated-Dynamic-Output;	# name of output folder
+		file mkdir $dataDir; 						# create output folder
+	}
+
+###################################################################################################
+#          Set Up & Source Definition
+###################################################################################################
+	model BasicBuilder -ndm 2 -ndf 3;	# Define the model builder, ndm = #dimension, ndf = #dofs
+
+	source units.tcl;					# procedure for units
+
+	source procs/proc_header.tcl;
+	source files/file_header.tcl
+	source columns/column_header.tcl;
+	source beams/beam_header.tcl;
+	source boundaries/boundaries_header.tcl;
+	source booleans/booleans_header.tcl;
+	source display/display_header.tcl;
+	source non_linears/non_linears_header.tcl;
+	source sections/sections_header.tcl;
+	source frames/frame_header.tcl;
+	source bracings/bracings_header.tcl;
+
+################# VAMVATSIKOS' UTILS #################
+
+	source ../util/GetPeriodSetDamping.tcl
+
+################################################
+	
+	
+################# VAMVATSIKOS' READ PARAMETERS #################	
+#------------------------------------------------------------------------
+# Source the optimization parameters for the bridge (e.g. number of spans)
+# The standard file recreates the original Kavala in 2D
+	if {[file exists "MatIDA_paramfile.tcl"]} {
+	   puts "Using EXTERNAL parameter file for optimization (Matlab-generated)"
+	   source MatIDA_paramfile.tcl
+	} else {
+	   puts "Using STANDARD parameter file"
+	   source standard_paramfile.tcl
+	}
+
+	#---------------------------------------------------------------------------
+	# Source the analysisType information. Better to have it in a distinct file.
+	if {[file exists "MatIDA_anlsfile.tcl"]} {
+	   puts "Reading EXTERNAL Analysistype file (Matlab-generated)"
+	   source MatIDA_anlsfile.tcl
+	}
+
+	#----------------------------------------------
+	# Source the timehistory information to apply. The default
+	# file applies "HDA255.AT2.txt" and "HDA165.AT2.txt", upscaled by 7.5
+	# if another exists, then it is treated as if generated to run an IDA.
+	if {$analysisType=="dynamic" & [file exists "MatIDA_thfile.tcl"]} {
+	   set runIDAflag 1
+	   puts "Using EXTERNAL Timehistory data-file (Matlab-generated)"
+	   source MatIDA_thfile.tcl
+	} else {
+	   set runIDAflag 0
+	   puts "Using STANDARD Timehistory data-file"
+	   source standard_thfile.tcl
+	}
+
+	#--------------------------------
+	# max allowed subdivisions of dt (for variable transient) or standard subdivisions (for Transient)
+	set dtsub 1.0
+
+	if {$nstory<3} {
+	  set Neigen $nstory  
+	} else {
+	  set Neigen 3 	
+	}
+################################################
+
+##### BOOTING SECTIONS AND MATERIALS ###########
+	source bootSectionsAndMats.tcl
+	#print2DElasticSections
+################################################
+
+
+
+###################################################################################################
+#          Frames
+###################################################################################################
+
+	set Xpoints "0.0	1.35001	2.766	4.11601	5.532	6.88201	8.298	9.64801	11.064	12.41401	13.83	15.18001	17.023	18.37301	19.789	21.13901	22.555	23.90501	25.321	26.67101	28.087	29.43701	30.853	32.20301	32.846	34.19601	35.612	36.96201	38.378	39.72801	41.144	42.49401	43.91	45.26001	46.676	48.02601	49.869	51.21901	52.635	53.98501	55.401	56.75101	58.167	59.51701	60.933	62.28301	63.699	65.04901"
+	set Ypoints "0.0	0.0465	0.1305	0.421	1.5555	2.728	2.9805	3.046	4.4055	5.353	5.671	5.8305	7.3305	7.978	8.296	8.8305	10.3305	10.603	10.921	11.8305	11.99203	12.1305	13.228	13.546	13.5555	14.9805	15.853	16.171	16.4055	17.8305	18.478	18.796	19.3305	20.8305	21.103	21.421	22.3305	23.8305	24.06403"
+
+	
+#########################################
+## First, prepare some data for masses ##
+	set SteelRho [expr 1.0*7850*$kg/$m3]
+
+	set FrameWidth [expr 1.35*$m]
+	set BracingLength [expr 1.9629*$m]
+	set RailSpan	[expr 1.416*$m]
+	set MachineSpan [expr 1.843*$m]
+	set DbracingHeight [expr 2.85*$m]
+	
+	set node_massCol3 [expr $A_column3*$DbracingHeight*$SteelRho]
+	set node_massCol4 [expr $A_column4*$DbracingHeight*$SteelRho]
+	
+	set node_massRailBeam10 [expr $A_RL10*(0.5*($RailSpan+$FrameWidth))*$SteelRho]	
+	set node_massUFrameHor5 [expr 0.5*$A_hor5*$FrameWidth*$SteelRho]
+	set node_massUFrameDiag6 [expr $A_hor6*$BracingLength*$SteelRho]
+	set node_massUFrameDiag7 [expr $A_hor7*$BracingLength*$SteelRho]
+	set node_massMachIPE100 [expr 0.5*$A_Machine*$MachineSpan*$SteelRho]
+	
+	set massScale 0.8
+	set pallet1_Dist [expr $massScale*	8.3747*$kN/$g/$m]
+	set pallet2_Dist [expr $massScale*	6.7*$kN/$g/$m]
+	set pallet3_Dist [expr $massScale*	5.0248*$kN/$g/$m]
+	
+	set totRailLength [expr 15.523*$m]
+	set totUprights [expr 11]
+	
+	set pallet1	[expr $pallet1_Dist*$totRailLength/$totUprights]
+	set pallet2	[expr $pallet2_Dist*$totRailLength/$totUprights]	
+	set pallet3	[expr $pallet3_Dist*$totRailLength/$totUprights]	
+	
+#########################################
+
+######################################
+## Now calculate mass for each node ##
+	
+	set massMCH [expr  $node_massMachIPE100]
+	set massH5 [expr $node_massUFrameHor5]
+	
+	set massC3 [expr $node_massCol3+$node_massUFrameHor5+$node_massUFrameDiag6]
+	set massC4 [expr $node_massCol4+$node_massUFrameHor5+$node_massUFrameDiag7]
+	
+	
+	set pallet1TOT [expr $pallet1+$node_massRailBeam10]
+	set pallet2TOT [expr $pallet2+$node_massRailBeam10]
+	set pallet3TOT [expr $pallet3+$node_massRailBeam10]
+	
+	set pallet1EDG [expr $pallet1+0.5*$node_massRailBeam10]
+	set pallet2EDG [expr $pallet2+0.5*$node_massRailBeam10]
+	set pallet3EDG [expr $pallet3+0.5*$node_massRailBeam10]
+	set masses1   "   0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0
+					$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5
+					$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4
+					$pallet3EDG	$pallet3TOT	$pallet3TOT	$pallet3TOT	$pallet3TOT	$pallet3TOT	$pallet3TOT	$pallet3TOT	$pallet3TOT	$pallet3TOT	$pallet3TOT	$pallet3EDG	$pallet3EDG	$pallet3TOT	$pallet3TOT	$pallet3TOT	$pallet3TOT	$pallet3TOT	$pallet3TOT	$pallet3TOT	$pallet3TOT	$pallet3TOT	$pallet3TOT	$pallet3EDG	$pallet3EDG	$pallet3TOT	$pallet3TOT	$pallet3TOT	$pallet3TOT	$pallet3TOT	$pallet3TOT	$pallet3TOT	$pallet3TOT	$pallet3TOT	$pallet3TOT	$pallet3EDG	$pallet3EDG	$pallet3TOT	$pallet3TOT	$pallet3TOT	$pallet3TOT	$pallet3TOT	$pallet3TOT	$pallet3TOT	$pallet3TOT	$pallet3TOT	$pallet3TOT	$pallet3EDG
+					0	0	0	0	0	0	0	0	0	0	0	$massMCH	$massMCH	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	$massMCH	$massMCH	0	0	0	0	0	0	0	0	0	0	0
+					$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5
+					$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4
+					$pallet3EDG	$pallet3TOT	$pallet3TOT	$pallet3TOT	$pallet3TOT	$pallet3TOT	$pallet3TOT	$pallet3TOT	$pallet3TOT	$pallet3TOT	$pallet3TOT	$pallet3EDG	$pallet3EDG	$pallet3TOT	$pallet3TOT	$pallet3TOT	$pallet3TOT	$pallet3TOT	$pallet3TOT	$pallet3TOT	$pallet3TOT	$pallet3TOT	$pallet3TOT	$pallet3EDG	$pallet3EDG	$pallet3TOT	$pallet3TOT	$pallet3TOT	$pallet3TOT	$pallet3TOT	$pallet3TOT	$pallet3TOT	$pallet3TOT	$pallet3TOT	$pallet3TOT	$pallet3EDG	$pallet3EDG	$pallet3TOT	$pallet3TOT	$pallet3TOT	$pallet3TOT	$pallet3TOT	$pallet3TOT	$pallet3TOT	$pallet3TOT	$pallet3TOT	$pallet3TOT	$pallet3EDG
+					0	0	0	0	0	0	0	0	0	0	0	$massMCH	$massMCH	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	$massMCH	$massMCH	0	0	0	0	0	0	0	0	0	0	0
+					$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5
+					$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4
+					$pallet3EDG	$pallet3TOT	$pallet3TOT	$pallet3TOT	$pallet3TOT	$pallet3TOT	$pallet3TOT	$pallet3TOT	$pallet3TOT	$pallet3TOT	$pallet3TOT	$pallet3EDG	$pallet3EDG	$pallet3TOT	$pallet3TOT	$pallet3TOT	$pallet3TOT	$pallet3TOT	$pallet3TOT	$pallet3TOT	$pallet3TOT	$pallet3TOT	$pallet3TOT	$pallet3EDG	$pallet3EDG	$pallet3TOT	$pallet3TOT	$pallet3TOT	$pallet3TOT	$pallet3TOT	$pallet3TOT	$pallet3TOT	$pallet3TOT	$pallet3TOT	$pallet3TOT	$pallet3EDG	$pallet3EDG	$pallet3TOT	$pallet3TOT	$pallet3TOT	$pallet3TOT	$pallet3TOT	$pallet3TOT	$pallet3TOT	$pallet3TOT	$pallet3TOT	$pallet3TOT	$pallet3EDG
+					0	0	0	0	0	0	0	0	0	0	0	$massMCH	$massMCH	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	$massMCH	$massMCH	0	0	0	0	0	0	0	0	0	0	0
+					$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5
+					$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4	$massC4
+					$pallet3EDG	$pallet3TOT	$pallet3TOT	$pallet3TOT	$pallet3TOT	$pallet3TOT	$pallet3TOT	$pallet3TOT	$pallet3TOT	$pallet3TOT	$pallet3TOT	$pallet3EDG	$pallet3EDG	$pallet3TOT	$pallet3TOT	$pallet3TOT	$pallet3TOT	$pallet3TOT	$pallet3TOT	$pallet3TOT	$pallet3TOT	$pallet3TOT	$pallet3TOT	$pallet3EDG	$pallet3EDG	$pallet3TOT	$pallet3TOT	$pallet3TOT	$pallet3TOT	$pallet3TOT	$pallet3TOT	$pallet3TOT	$pallet3TOT	$pallet3TOT	$pallet3TOT	$pallet3EDG	$pallet3EDG	$pallet3TOT	$pallet3TOT	$pallet3TOT	$pallet3TOT	$pallet3TOT	$pallet3TOT	$pallet3TOT	$pallet3TOT	$pallet3TOT	$pallet3TOT	$pallet3EDG
+					0	0	0	0	0	0	0	0	0	0	0	$massMCH	$massMCH	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	$massMCH	$massMCH	0	0	0	0	0	0	0	0	0	0	0
+					$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5
+					0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0
+					$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5
+					$pallet2EDG	$pallet2TOT	$pallet2TOT	$pallet2TOT	$pallet2TOT	$pallet2TOT	$pallet2TOT	$pallet2TOT	$pallet2TOT	$pallet2TOT	$pallet2TOT	$pallet2EDG	$pallet2EDG	$pallet2TOT	$pallet2TOT	$pallet2TOT	$pallet2TOT	$pallet2TOT	$pallet2TOT	$pallet2TOT	$pallet2TOT	$pallet2TOT	$pallet2TOT	$pallet2EDG	$pallet2EDG	$pallet2TOT	$pallet2TOT	$pallet2TOT	$pallet2TOT	$pallet2TOT	$pallet2TOT	$pallet2TOT	$pallet2TOT	$pallet2TOT	$pallet2TOT	$pallet2EDG	$pallet2EDG	$pallet2TOT	$pallet2TOT	$pallet2TOT	$pallet2TOT	$pallet2TOT	$pallet2TOT	$pallet2TOT	$pallet2TOT	$pallet2TOT	$pallet2TOT	$pallet2EDG
+					0	0	0	0	0	0	0	0	0	0	0	$massMCH	$massMCH	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	$massMCH	$massMCH	0	0	0	0	0	0	0	0	0	0	0
+					$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3
+					$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5
+					$pallet2EDG	$pallet2TOT	$pallet2TOT	$pallet2TOT	$pallet2TOT	$pallet2TOT	$pallet2TOT	$pallet2TOT	$pallet2TOT	$pallet2TOT	$pallet2TOT	$pallet2EDG	$pallet2EDG	$pallet2TOT	$pallet2TOT	$pallet2TOT	$pallet2TOT	$pallet2TOT	$pallet2TOT	$pallet2TOT	$pallet2TOT	$pallet2TOT	$pallet2TOT	$pallet2EDG	$pallet2EDG	$pallet2TOT	$pallet2TOT	$pallet2TOT	$pallet2TOT	$pallet2TOT	$pallet2TOT	$pallet2TOT	$pallet2TOT	$pallet2TOT	$pallet2TOT	$pallet2EDG	$pallet2EDG	$pallet2TOT	$pallet2TOT	$pallet2TOT	$pallet2TOT	$pallet2TOT	$pallet2TOT	$pallet2TOT	$pallet2TOT	$pallet2TOT	$pallet2TOT	$pallet2EDG
+					0	0	0	0	0	0	0	0	0	0	0	$massMCH	$massMCH	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	$massMCH	$massMCH	0	0	0	0	0	0	0	0	0	0	0
+					$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3
+					$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5
+					$pallet2EDG	$pallet2TOT	$pallet2TOT	$pallet2TOT	$pallet2TOT	$pallet2TOT	$pallet2TOT	$pallet2TOT	$pallet2TOT	$pallet2TOT	$pallet2TOT	$pallet2EDG	$pallet2EDG	$pallet2TOT	$pallet2TOT	$pallet2TOT	$pallet2TOT	$pallet2TOT	$pallet2TOT	$pallet2TOT	$pallet2TOT	$pallet2TOT	$pallet2TOT	$pallet2EDG	$pallet2EDG	$pallet2TOT	$pallet2TOT	$pallet2TOT	$pallet2TOT	$pallet2TOT	$pallet2TOT	$pallet2TOT	$pallet2TOT	$pallet2TOT	$pallet2TOT	$pallet2EDG	$pallet2EDG	$pallet2TOT	$pallet2TOT	$pallet2TOT	$pallet2TOT	$pallet2TOT	$pallet2TOT	$pallet2TOT	$pallet2TOT	$pallet2TOT	$pallet2TOT	$pallet2EDG
+					0	0	0	0	0	0	0	0	0	0	0	$massMCH	$massMCH	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	$massMCH	$massMCH	0	0	0	0	0	0	0	0	0	0	0
+					$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3
+					$pallet1EDG	$pallet1TOT	$pallet1TOT	$pallet1TOT	$pallet1TOT	$pallet1TOT	$pallet1TOT	$pallet1TOT	$pallet1TOT	$pallet1TOT	$pallet1TOT	$pallet1EDG	$pallet1EDG	$pallet1TOT	$pallet1TOT	$pallet1TOT	$pallet1TOT	$pallet1TOT	$pallet1TOT	$pallet1TOT	$pallet1TOT	$pallet1TOT	$pallet1TOT	$pallet1EDG	$pallet1EDG	$pallet1TOT	$pallet1TOT	$pallet1TOT	$pallet1TOT	$pallet1TOT	$pallet1TOT	$pallet1TOT	$pallet1TOT	$pallet1TOT	$pallet1TOT	$pallet1EDG	$pallet1EDG	$pallet1TOT	$pallet1TOT	$pallet1TOT	$pallet1TOT	$pallet1TOT	$pallet1TOT	$pallet1TOT	$pallet1TOT	$pallet1TOT	$pallet1TOT	$pallet1EDG
+					$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5
+					0	0	0	0	0	0	0	0	0	0	0	$massMCH	$massMCH	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	$massMCH	$massMCH	0	0	0	0	0	0	0	0	0	0	0
+					$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3	$massC3
+					$pallet1EDG	$pallet1TOT	$pallet1TOT	$pallet1TOT	$pallet1TOT	$pallet1TOT	$pallet1TOT	$pallet1TOT	$pallet1TOT	$pallet1TOT	$pallet1TOT	$pallet1EDG	$pallet1EDG	$pallet1TOT	$pallet1TOT	$pallet1TOT	$pallet1TOT	$pallet1TOT	$pallet1TOT	$pallet1TOT	$pallet1TOT	$pallet1TOT	$pallet1TOT	$pallet1EDG	$pallet1EDG	$pallet1TOT	$pallet1TOT	$pallet1TOT	$pallet1TOT	$pallet1TOT	$pallet1TOT	$pallet1TOT	$pallet1TOT	$pallet1TOT	$pallet1TOT	$pallet1EDG	$pallet1EDG	$pallet1TOT	$pallet1TOT	$pallet1TOT	$pallet1TOT	$pallet1TOT	$pallet1TOT	$pallet1TOT	$pallet1TOT	$pallet1TOT	$pallet1TOT	$pallet1EDG
+					$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5	$massH5
+					0	0	0	0	0	0	0	0	0	0	0	$massMCH	$massMCH	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	$massMCH	$massMCH	0	0	0	0	0	0	0	0	0	0	0
+					0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0
+	"
+#########################################
+
+#################
+## Draw frames ##
+	set frame1 "
+		  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  
+		05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05
+		  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  
+		05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05
+		  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  
+		05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05
+		  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {00 00 00}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {00 00 00}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {00 00 00}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  
+		05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05
+		  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {99 15 99}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {99 15 99}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  
+		05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05 
+		  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  
+		05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05
+		  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  
+		05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05
+		  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {00 00 00}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {00 00 00}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {00 00 00}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  
+		05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05
+		  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {99 15 99}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {99 15 99}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  
+		05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05 
+		  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  
+		05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05 
+		  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  
+		05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05 
+		  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {00 00 00}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {00 00 00}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {00 00 00}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  
+		05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05
+		  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {99 15 99}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {99 15 99}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  
+		05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05 
+		  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  
+		05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05          05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05
+		  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  
+		05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05 
+		  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {00 00 00}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {00 00 00}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {00 00 00}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  
+		05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05 
+		  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {99 15 99}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {99 15 99}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  
+		05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05 
+		  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  
+		05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05	        05 
+		  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  
+		04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04
+		  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  
+		04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04
+		  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {00 00 00}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {00 00 00}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {00 00 00}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  
+		04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04          04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04
+		  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {99 15 99}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {99 15 99}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  
+		04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04
+		  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  
+		04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04
+		  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  
+		04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04
+		  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {00 00 00}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {00 00 00}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {00 00 00}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  
+		04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04          04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04
+		  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {99 15 99}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {99 15 99}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  
+		04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04
+		  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  
+		04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04
+		  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  
+		04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04
+		  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {00 00 00}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {00 00 00}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {00 00 00}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  
+		04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04
+		  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {99 15 99}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {99 15 99}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  
+		04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04
+		  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  
+		04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04
+		  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {00 00 00}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {00 00 00}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {00 00 00}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  
+		04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04
+		  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  
+		04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04
+		  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {99 15 99}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {99 15 99}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  
+		04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04
+		  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  
+		04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04
+		  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {00 00 00}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {00 00 00}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {00 00 00}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  {99 14 99}  
+		04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04
+		  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  {00 00 00}  {99 11 99}  
+		04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04
+		  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {99 15 99}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {99 15 99}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  {00 00 00}  
+		04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04	        04 	
+	"
+	
+
+	set Nframes 1;
+	set x0 0.0;
+
+#GUI_frame2D_ElasticCol_LumpedBeam	{ Region_ID   *masses *Ypoints  *Xpoints x0 *frame release {Node_ID 100} {Ele_ID 1000}  {InternalNode_ID 100  } {InternalEle_ID 100  } } {
+GUI_frame2D_FiberCol_LumpedBeam	1  masses1 Ypoints Xpoints  $x0 frame1 "pinned" 10000 10000
+#GUI_frame2D_ElasticCol_LumpedBeam	1  masses1 Ypoints Xpoints  $x0 frame1 "fullrelease" 1000
+#########################################
+
+
+##############################
+## Create bottom boundaries ##
+
+#SpringedAndPinned2D	{ Region_ID	  SlaveRegion_ID	 y		springMat
+#########################################
+
+##############################
+## Create bracing ##
+
+	set XBracingPoints "0.0	1.35001	2.766	4.11601	5.532	6.88201	8.298	9.64801	11.064	12.41401	13.83	15.18001	17.023	18.37301	19.789	21.13901	22.555	23.90501	25.321	26.67101	28.087	29.43701	30.853	32.20301	32.846	34.19601	35.612	36.96201	38.378	39.72801	41.144	42.49401	43.91	45.26001	46.676	48.02601	49.869	51.21901	52.635	53.98501	55.401	56.75101	58.167	59.51701	60.933	62.28301	63.699	65.04901"
+	set YBracingPoints "0.1305	1.5555	2.9805	4.4055	5.8305	7.3305	8.8305	10.3305	11.8305	12.1305	13.5555	14.9805	16.4055	17.8305	19.3305	20.8305	22.3305	23.8305"
+	
+	set bracings "
+		13	00	13	00	13	00	13	00	13	00	13	00	13	00	13	00	13	00	13	00	13	00	13	00	13	00	13	00	13	00	13	00	13	00	13	00	13	00	13	00	13	00	13	00	13	00	13
+		13	00	13	00	13	00	13	00	13	00	13	00	13	00	13	00	13	00	13	00	13	00	13	00	13	00	13	00	13	00	13	00	13	00	13	00	13	00	13	00	13	00	13	00	13	00	13
+		13	00	13	00	13	00	13	00	13	00	13	00	13	00	13	00	13	00	13	00	13	00	13	00	13	00	13	00	13	00	13	00	13	00	13	00	13	00	13	00	13	00	13	00	13	00	13
+		13	00	13	00	13	00	13	00	13	00	13	00	13	00	13	00	13	00	13	00	13	00	13	00	13	00	13	00	13	00	13	00	13	00	13	00	13	00	13	00	13	00	13	00	13	00	13
+		13	00	13	00	13	00	13	00	13	00	13	00	13	00	13	00	13	00	13	00	13	00	13	00	13	00	13	00	13	00	13	00	13	00	13	00	13	00	13	00	13	00	13	00	13	00	13
+		13	00	13	00	13	00	13	00	13	00	13	00	13	00	13	00	13	00	13	00	13	00	13	00	13	00	13	00	13	00	13	00	13	00	13	00	13	00	13	00	13	00	13	00	13	00	13
+		13	00	13	00	13	00	13	00	13	00	13	00	13	00	13	00	13	00	13	00	13	00	13	00	13	00	13	00	13	00	13	00	13	00	13	00	13	00	13	00	13	00	13	00	13	00	13
+		13	00	13	00	13	00	13	00	13	00	13	00	13	00	13	00	13	00	13	00	13	00	13	00	13	00	13	00	13	00	13	00	13	00	13	00	13	00	13	00	13	00	13	00	13	00	13
+		00	00	00	00	00	00	00	00	00	00	00	00	00	00	00	00	00	00	00	00	00	00	00	00	00	00	00	00	00	00	00	00	00	00	00	00	00	00	00	00	00	00	00	00	00	00	00
+		12	00	12	00	12	00	12	00	12	00	12	00	12	00	12	00	12	00	12	00	12	00	12	00	12	00	12	00	12	00	12	00	12	00	12	00	12	00	12	00	12	00	12	00	12	00	12
+		12	00	12	00	12	00	12	00	12	00	12	00	12	00	12	00	12	00	12	00	12	00	12	00	12	00	12	00	12	00	12	00	12	00	12	00	12	00	12	00	12	00	12	00	12	00	12
+		12	00	12	00	12	00	12	00	12	00	12	00	12	00	12	00	12	00	12	00	12	00	12	00	12	00	12	00	12	00	12	00	12	00	12	00	12	00	12	00	12	00	12	00	12	00	12
+		12	00	12	00	12	00	12	00	12	00	12	00	12	00	12	00	12	00	12	00	12	00	12	00	12	00	12	00	12	00	12	00	12	00	12	00	12	00	12	00	12	00	12	00	12	00	12
+		12	00	12	00	12	00	12	00	12	00	12	00	12	00	12	00	12	00	12	00	12	00	12	00	12	00	12	00	12	00	12	00	12	00	12	00	12	00	12	00	12	00	12	00	12	00	12
+		12	00	12	00	12	00	12	00	12	00	12	00	12	00	12	00	12	00	12	00	12	00	12	00	12	00	12	00	12	00	12	00	12	00	12	00	12	00	12	00	12	00	12	00	12	00	12
+		12	00	12	00	12	00	12	00	12	00	12	00	12	00	12	00	12	00	12	00	12	00	12	00	12	00	12	00	12	00	12	00	12	00	12	00	12	00	12	00	12	00	12	00	12	00	12
+		12	00	12	00	12	00	12	00	12	00	12	00	12	00	12	00	12	00	12	00	12	00	12	00	12	00	12	00	12	00	12	00	12	00	12	00	12	00	12	00	12	00	12	00	12	00	12
+	"
+	
+	set orientation "
+		l	00	l	00	l	00	l	00	l	00	l	00	r	00	r	00	r	00	r	00	r	00	r	00	l	00	l	00	l	00	l	00	l	00	l	00	r	00	r	00	r	00	r	00	r	00	r
+		r	00	r	00	r	00	r	00	r	00	r	00	l	00	l	00	l	00	l	00	l	00	l	00	r	00	r	00	r	00	r	00	r	00	r	00	l	00	l	00	l	00	l	00	l	00	l
+		l	00	l	00	l	00	l	00	l	00	l	00	r	00	r	00	r	00	r	00	r	00	r	00	l	00	l	00	l	00	l	00	l	00	l	00	r	00	r	00	r	00	r	00	r	00	r
+		r	00	r	00	r	00	r	00	r	00	r	00	l	00	l	00	l	00	l	00	l	00	l	00	r	00	r	00	r	00	r	00	r	00	r	00	l	00	l	00	l	00	l	00	l	00	l
+		l	00	l	00	l	00	l	00	l	00	l	00	r	00	r	00	r	00	r	00	r	00	r	00	l	00	l	00	l	00	l	00	l	00	l	00	r	00	r	00	r	00	r	00	r	00	r
+		r	00	r	00	r	00	r	00	r	00	r	00	l	00	l	00	l	00	l	00	l	00	l	00	r	00	r	00	r	00	r	00	r	00	r	00	l	00	l	00	l	00	l	00	l	00	l
+		l	00	l	00	l	00	l	00	l	00	l	00	r	00	r	00	r	00	r	00	r	00	r	00	l	00	l	00	l	00	l	00	l	00	l	00	r	00	r	00	r	00	r	00	r	00	r
+		r	00	r	00	r	00	r	00	r	00	r	00	l	00	l	00	l	00	l	00	l	00	l	00	r	00	r	00	r	00	r	00	r	00	r	00	l	00	l	00	l	00	l	00	l	00	l
+		00	00	00	00	00	00	00	00	00	00	00	00	00	00	00	00	00	00	00	00	00	00	00	00	00	00	00	00	00	00	00	00	00	00	00	00	00	00	00	00	00	00	00	00	00	00	00
+		l	00	l	00	l	00	l	00	l	00	l	00	r	00	r	00	r	00	r	00	r	00	r	00	l	00	l	00	l	00	l	00	l	00	l	00	r	00	r	00	r	00	r	00	r	00	r
+		r	00	r	00	r	00	r	00	r	00	r	00	l	00	l	00	l	00	l	00	l	00	l	00	r	00	r	00	r	00	r	00	r	00	r	00	l	00	l	00	l	00	l	00	l	00	l
+		l	00	l	00	l	00	l	00	l	00	l	00	r	00	r	00	r	00	r	00	r	00	r	00	l	00	l	00	l	00	l	00	l	00	l	00	r	00	r	00	r	00	r	00	r	00	r
+		r	00	r	00	r	00	r	00	r	00	r	00	l	00	l	00	l	00	l	00	l	00	l	00	r	00	r	00	r	00	r	00	r	00	r	00	l	00	l	00	l	00	l	00	l	00	l
+		l	00	l	00	l	00	l	00	l	00	l	00	r	00	r	00	r	00	r	00	r	00	r	00	l	00	l	00	l	00	l	00	l	00	l	00	r	00	r	00	r	00	r	00	r	00	r
+		r	00	r	00	r	00	r	00	r	00	r	00	l	00	l	00	l	00	l	00	l	00	l	00	r	00	r	00	r	00	r	00	r	00	r	00	l	00	l	00	l	00	l	00	l	00	l
+		l	00	l	00	l	00	l	00	l	00	l	00	r	00	r	00	r	00	r	00	r	00	r	00	l	00	l	00	l	00	l	00	l	00	l	00	r	00	r	00	r	00	r	00	r	00	r
+		r	00	r	00	r	00	r	00	r	00	r	00	l	00	l	00	l	00	l	00	l	00	l	00	r	00	r	00	r	00	r	00	r	00	r	00	l	00	l	00	l	00	l	00	l	00	l
+	"
+
+	rackBracing2D	3  1  YBracingPoints XBracingPoints bracings orientation 200; #200
+	
+	#frameBracing2D	3  1  YBracingPoints XBracingPoints bracings "double" 1000;#200
+	
+	#frameFiberBracing2D	3  1  YBracingPoints XBracingPoints bracings "double" 1000;#200
+#########################################
+
+##############################
+## Create roof ##
+
+#zic_beam2D	{ Region_ID  massX   *lengths_sym *ver_sym *diag_sym *botSec *topSec *verSec *diagSec h0_start  h0_end  x0  y0
+
+	set XRoofPoints "0.0	0.07915	1.35001	1.52855	2.766 4.11601 4.12735	5.532	6.88201	6.97609	8.298	9.64801	9.74986	10.7245	11.064	12.41401	12.52362	13.83	15.18001	15.32242	16.94666	17.023	18.37301	19.789	19.79539	21.13901	21.6245	22.555	22.56916	23.90501	25.321	25.34293	26.67101	28.087	28.21669	29.43701	30.74053	30.853	32.20301	32.23986	32.5245"
+	set topSec "17	17	17	17	17	17	17	17	17	17	17	17	17	17	17	17	17	17	17	17	17	17	17	17	17	17	17	17	17	17	17	17	17	17	17	17	17	17	17	17"
+	set botSec "16	16	16	16	16	16	16	16	16	16	16	16	16	16	16	16	16	16	16	16	16	16	16	16	16	16	16	16	16	16	16	16	16	16	16	16	16	16	16	16"
+	
+	set XDiagPoints "1.52855 4.12735 15.32242 16.94666	28.21669 30.74053"
+	set diagSec "13 00 13 00 13"
+	
+	set XVerPoints "0.07915	1.52855	4.12735	6.97609	9.74986	12.52362 15.32242 16.94666 19.79539	22.56916 25.34293 28.21669 30.74053	32.23986"
+	set verSec "13	13	13	13	13	13	13	13	13	13	13	13	13	13"
+	
+	set massX [expr 100*$kg];
+	
+	zic_beam2D	4  $massX   XRoofPoints XVerPoints XDiagPoints botSec topSec verSec diagSec\
+				0.286  1.252  0.0  24.06403;
+#########################################
+
+end_of_element_definitions; ################### NEVER FORGET THIS
+
+PrintRegions;
+
+
+
+###################################################################################################
+#          Merge
+###################################################################################################
+
+	merge_common 1 4
+
+	write_removed_elements;
+
+
+###################################################################################################
+#          Analysis
+###################################################################################################
+
+###################################################################################################
+#          Display													  
+###################################################################################################	
+
+#DisplayModel2D { {ShapeType nill} {dAmp 5}  {xLoc 10} {yLoc 10} {xPixels 512} {yPixels 384} {nEigen 1} } {
+	DisplayModel2D DeformedShape 10	300	100	1500	600;
+
+###################################################################################################
+#          MODAL ANALYSIS AND DAMPING ASSIGNMENT
+###################################################################################################
+	GetPeriodSetDamping $Neigen 0.02 1 2 "simple2DframePeriods.out"
+
+
+###################################################################################################
+#          Apply Gravity Loads
+###################################################################################################
+
+# apply gravity loads
+#command: pattern PatternType $PatternID TimeSeriesType
+	pattern Plain 101 Constant {
+		convert_massX2D;
+	}
+	
+	RunGravityAnalysis 10
+
+
+############################################################################
+#              Recorders
+############################################################################
+
+if {$analysisType == "pushover"} {
+	puts "Setting up recorders for pushover..."
+	# record floor displacements
+	set topNode1 [getXY_Node 1 $x0 [lindex $Ypoints end]];
+	recorder Node -file $dataDir/Disp.out -time -node $topNode1 -dof 1 disp;
+
+	# record base shear reactions
+
+	set baseNodes {};
+	for {set i 1} {$i<=$Nframes} {incr i} {
+		set tmpList [  lineX_nodes $i 0.0];
+		
+		for {set j 0} {$j<[llength $tmpList]} {incr j} {
+			lappend baseNodes [lindex $tmpList $j];
+		}
+	
+	}
+
+	set Vnames {};
+	for {set i 0} {$i< [llength $baseNodes]} {incr i} {
+		recorder Node -file "$dataDir/V[lindex $baseNodes $i].out" -node [lindex $baseNodes $i]  -dof 1 reaction;
+		lappend Vnames "$dataDir/V[lindex $baseNodes $i].out";
+	}
+	
+	
+	recorder Element  -file "$dataDir/EleSection1.out" -time -eleRange 11177	11308 -dof 2	globalForce ; # 1198 1242
+	
+	recorder Element  -file "$dataDir/Bracing.out" -time -ele 31001 -dof 2	globalForce ; # 1198 1242
+	
+	recorder Element -file "$dataDir/EleSection3.out" -time -ele 11009 -dof 2	globalForce; # 1009 1053
+	
+	recorder Element -file "$dataDir/EleSection2.out" -time -ele 11397 -dof 2	globalForce; # 1397 1441
+	
+	puts "Recorders done!"
+	
+} elseif {$analysisType == "dynamic"} {
+
+	puts "Setting up recorders for dynamic..."
+	# record floor displacements
+	set driftNodesY "0.0	2.882	5.507	8.132	10.757	13.382	16.007	18.632	21.257  23.98403";
+	set driftNodesX 0.0;
+	set driftRegion 1;
+	
+	set driftNodes ""
+
+	for {set i 0} {$i<[llength $driftNodesY]} {incr i} {
+		set y [lindex $driftNodesY $i]
+		set tmpNode [getXY_Node $driftRegion	$driftNodesX	$y]
+		lappend driftNodes $tmpNode
+	}
+	
+	
+	for {set i 1} {$i<=$nstory} {incr i} {
+		set node_i [lindex $driftNodes [expr $i-1]];
+		set node_j [lindex $driftNodes $i];
+		if {$i<10} {
+		# use $i\x.out because $ix.out will search for variable $ix not $i.
+			recorder Drift -file "$dataDir/idr_0$i\x.out" -time -iNode $node_i -jNode $node_j -dof 1 -perpDirn 2
+		} else {
+			recorder Drift -file "$dataDir/idr_$i\x.out" -time -iNode $node_i -jNode  $node_j -dof 1 -perpDirn 2
+		}
+
+	}
+	
+	# roof drift. The dof is along x (1) and the height along y (2)
+	recorder Drift -file "$dataDir/roofdrx.out" -time -iNode [lindex $driftNodes 0] -jNode [lindex $driftNodes end] -dof 1 -perpDirn 2
+	
+		puts "Recorders done!"
+
+}
+
+
+
+###################################################################################################
+#          Run pushover													  
+###################################################################################################	
+
+
+if {$analysisType == "pushover"} { 
+	set Fx_top [expr 1*$N];
+	pattern Plain 200 Linear {			
+			
+			for {set i 1} {$i<=$Nframes} {incr i} {
+				#SPO_x_triangular $i $x0 1.0
+				#SPO_x_eigen {Region_ID X_coord Fx_top modeNum {Negligible 1e-3} }
+				SPO_x_eigen2D $i $x0 $Fx_top 1
+			}
+			
+	}
+
+	RunPushover2Converge $topNode1 [expr 178.248*$mm] [expr 0.020*$mm] 
+
+}
+
+if {$analysisType == "dynamic"} { 
+  source ../util/ReadSMDFile3.tcl
+  source ../util/RunTransient2Converge.tcl
+  source ../util/DefineXYZ_UniformExcitation.tcl
+
+  # you are getting back "nptsx" and "dtx"
+  DefineXYZ_UniformExcitation $dtsub $g $GMdir $GMfileX $GMfileY $GMfileZ $GMfactorX $GMfactorY $GMfactorZ nptsx dtx
+
+  integrator Newmark 0.5 0.25
+  test NormDispIncr 1.0e-8 10 0
+  
+  
+  analysis Transient
+  puts "analysis Transient"
+  RunTransient2Converge [expr $nptsx*$dtsub] [expr $dtx/$dtsub]
+}
+
+
+
+
+
+
+###################################################################################################
+#          CLEAN ALL
+###################################################################################################
+	
+	print "frame2D.out"	
+	cleanall;
+	
+
+###################################################################################################
+#          POST PROCESSING
+###################################################################################################
+
+if {$analysisType == "pushover"} {
+	addReactions $Vnames  "$dataDir/Vbase.out";
+	generatePushoverDiagram		"$dataDir/Disp.out"		"$dataDir/Vbase.out";
+} elseif {$analysisType == "dynamic"} {
+	if {!$runIDAflag} {
+	  # Delete old file as "print" simply appends the new results
+	}
+}
+

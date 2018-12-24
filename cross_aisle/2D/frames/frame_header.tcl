@@ -1,0 +1,5 @@
+source frames/GUI_frame_FiberCol_LumpedBeam.tcl
+source frames/GUI_frame2D_ElasticCol_LumpedBeam.tcl
+#source columns/zic_column.tcl
+
+source frames/GUI_frame2D_FiberCol_LumpedBeam.tcl

@@ -1,0 +1,13 @@
+source procs/sub_lappend.tcl
+source procs/sub_lappend_mod.tcl
+source procs/component.tcl
+source procs/proc_ref.tcl
+source procs/static.tcl
+source procs/abs.tcl
+source procs/cleanall.tcl
+source procs/convert_mass.tcl
+source procs/lineY_nodes.tcl
+source procs/lineX_nodes.tcl
+source procs/RunPushover2Converge_REV.tcl
+source procs/generateImperfectionPoint.tcl
+source procs/RunGravityAnalysis.tcl
