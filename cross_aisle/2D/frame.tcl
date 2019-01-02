@@ -23,7 +23,7 @@
 	set Analysis "2D";
 	
 # Define type of analysis:  "pushover" = pushover;  "dynamic" = dynamic
-	set analysisType "pushover1";
+	set analysisType "pushover";
 	#set analysisType "pushover";
 	#set analysisType "eigenvalue";
 
@@ -356,7 +356,7 @@ GUI_frame2D_FiberCol_LumpedBeam	1  masses1 Ypoints Xpoints  $x0 frame1 "pinned" 
 		r	00	r	00	r	00	r	00	r	00	r	00	l	00	l	00	l	00	l	00	l	00	l	00	r	00	r	00	r	00	r	00	r	00	r	00	l	00	l	00	l	00	l	00	l	00	l
 	"
 
-	rackBracing2D	3  1  YBracingPoints XBracingPoints bracings orientation 200; #200
+	rackFiberBracing2D	3  1  YBracingPoints XBracingPoints bracings orientation 200; #200
 	
 	#frameBracing2D	3  1  YBracingPoints XBracingPoints bracings "double" 1000;#200
 	
@@ -408,7 +408,7 @@ PrintRegions;
 ###################################################################################################	
 
 #DisplayModel2D { {ShapeType nill} {dAmp 5}  {xLoc 10} {yLoc 10} {xPixels 512} {yPixels 384} {nEigen 1} } {
-	DisplayModel2D DeformedShape 10	300	100	1500	600;
+	DisplayModel2D DeformedShape 20	300	100	1500	600;
 
 ###################################################################################################
 #          MODAL ANALYSIS AND DAMPING ASSIGNMENT
@@ -457,14 +457,21 @@ if {$analysisType == "pushover"} {
 		lappend Vnames "$dataDir/V[lindex $baseNodes $i].out";
 	}
 	
+	# LOWER BOT
+	#10049	10050	10051	10052	10053	10054	10055	10056	10057	10058	10059	10060	10061	10062	10063	10064	10065	10066	10067	10068	10069	10070	10071	10072	10073	10074	10075	10076	10077	10078	10079	10080	10081	10082	10083	10084	10085	10086	10087	10088	10089	10090	10091	10092	10093	10094	10095	10096	
+	#10001	10002	10003	10004	10005	10006	10007	10008	10009	10010	10011	10012	10013	10014	10015	10016	10017	10018	10019	10020	10021	10022	10023	10024	10025	10026	10027	10028	10029	10030	10031	10032	10033	10034	10035	10036	10037	10038	10039	10040	10041	10042	10043	10044	10045	10046	10047	10048	
+
+	for {set i 110001} {$i<=110048} {incr i} {
+		recorder Element -file "$dataDir/botUpright$i.out" -time -ele $i -dof 2	globalForce;
+	}
 	
-	recorder Element  -file "$dataDir/EleSection1.out" -time -eleRange 11177	11308 -dof 2	globalForce ; # 1198 1242
 	
-	recorder Element  -file "$dataDir/Bracing.out" -time -ele 31001 -dof 2	globalForce ; # 1198 1242
-	
-	recorder Element -file "$dataDir/EleSection3.out" -time -ele 11009 -dof 2	globalForce; # 1009 1053
-	
-	recorder Element -file "$dataDir/EleSection2.out" -time -ele 11397 -dof 2	globalForce; # 1397 1441
+	# LOWER TOP
+	#11057	11058	11059	11060	11061	11062	11063	11064	11065	11066	11067	11068	11069	11070	11071	11072	11073	11074	11075	11076	11077	11078	11079	11080	11081	11082	11083	11084	11085	11086	11087	11088	11089	11090	11091	11092	11093	11094	11095	11096	11097	11098	11099	11100	11101	11102	11103	11104	
+	#11009	11010	11011	11012	11013	11014	11015	11016	11017	11018	11019	11020	11021	11022	11023	11024	11025	11026	11027	11028	11029	11030	11031	11032	11033	11034	11035	11036	11037	11038	11039	11040	11041	11042	11043	11044	11045	11046	11047	11048	11049	11050	11051	11052	11053	11054	11055	11056	
+	for {set i 111009} {$i<=111056} {incr i} {
+		recorder Element -file "$dataDir/topUpright$i.out" -time -ele $i -dof 2	globalForce;
+	}
 	
 	puts "Recorders done!"
 	
@@ -523,7 +530,7 @@ if {$analysisType == "pushover"} {
 			
 	}
 
-	RunPushover2Converge $topNode1 [expr 178.248*$mm] [expr 0.020*$mm] 
+	RunPushover2Converge $topNode1 [expr 179.300*$mm] [expr 0.01*$mm] 
 
 }
 

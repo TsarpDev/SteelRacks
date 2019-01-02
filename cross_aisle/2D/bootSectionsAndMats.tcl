@@ -28,8 +28,8 @@
 
 ## Upright frame bracing
 	set UFrameHor5	11;	    #								(YOURS)
-	set UFrameDiag6	12;	    #								(YOURS)
-	set UFrameDiag7	13;	    #								(YOURS)
+	set UFrameDiag6	12;	    #								(YOURS)	(SEC)
+	set UFrameDiag7	13;	    #								(YOURS)	(SEC)
 
 ## Rail beam
 	set RailBeam10 14;		#								(YOURS)
@@ -217,6 +217,7 @@ set Iz_hor6	[expr 334959.0*$mm4];
 set Iy_hor6	[expr 153661.0*$mm4];
 addElasticSection	$UFrameDiag6;
 add2DElasticSectionProperties $UFrameDiag6 $E_hor6  $A_hor6 $Iy_hor6;	#to take into account buckling failure
+AngleSection $UFrameDiag6 $S355 [expr 50*$mm] [expr 64*$mm] [expr 3*$mm] [expr 3*$mm];
 
 set E_hor7	[expr 210.0*$GPa];
 set A_hor7	[expr 332.0*$mm2];
@@ -224,6 +225,7 @@ set Iz_hor7	[expr 231431.0*$mm4];
 set Iy_hor7	[expr 108314.0*$mm4];
 addElasticSection	$UFrameDiag7;
 add2DElasticSectionProperties $UFrameDiag7 $E_hor7  $A_hor7 $Iy_hor7;	#to take into account buckling failure
+AngleSection $UFrameDiag7 $S355 [expr 50*$mm] [expr 64*$mm] [expr 2*$mm] [expr 2*$mm];
 
 uniaxialMaterial Elastic $SpringPinned [expr 1e-9*$kN*$m];
 
