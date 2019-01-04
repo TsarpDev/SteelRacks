@@ -7,7 +7,7 @@
 #	fixity: pinned											    #
 
 
-proc_ref	rackBracing2D	{ Region_ID  frame_ID  *brYpoints *brXpoints *bracings *Orientation  {imp 0} {Node_ID 100} {Ele_ID 1000}  {InternalNode_ID 100  } {InternalEle_ID 100  } } {
+proc_ref	rackBracing2D	{ Region_ID  frame_ID  *brYpoints *brXpoints *bracings *Orientation *axialRelease rigidMat  {imp 0} {Node_ID 100} {Ele_ID 1000}  {InternalNode_ID 100  } {InternalEle_ID 100  } } {
 
 	kill_if_3D "ERROR: rackBracing2D is only for 2D analysis. Change analysis type.";
 	
@@ -159,7 +159,11 @@ proc_ref	rackBracing2D	{ Region_ID  frame_ID  *brYpoints *brXpoints *bracings *O
 						write_element $current_bracing $internal_nodeI $internal_nodeJ;
 						###############################
 						
-						equalDOF $node_i $internal_nodeI 1 2
+						set dx [expr [nodeCoord $node_i 1]-[nodeCoord $node_j 1]]
+						set dy [expr [nodeCoord $node_i 2]-[nodeCoord $node_j 2]] 			
+						element zeroLength [expr $current_bracing*$InternalEle_ID] $node_i $internal_nodeI -mat $axialMat $rigidMat -dir 1 2\
+																 -orient $dx $dy 0\
+																		  0  $dy 0							 
 						equalDOF $node_j $internal_nodeJ 1 2 
 					} else {
 					
@@ -178,7 +182,11 @@ proc_ref	rackBracing2D	{ Region_ID  frame_ID  *brYpoints *brXpoints *bracings *O
 						write_element $current_bracing $imp_nod $internal_nodeJ;
 						###############################
 						
-						equalDOF $node_i $internal_nodeI 1 2					 
+						set dx [expr [nodeCoord $node_i 1]-[nodeCoord $node_j 1]]
+						set dy [expr [nodeCoord $node_i 2]-[nodeCoord $node_j 2]] 			
+						element zeroLength [expr $current_bracing*$InternalEle_ID] $node_i $internal_nodeI -mat $axialMat $rigidMat -dir 1 2\
+																 -orient $dx $dy 0\
+																		  0  $dy 0							 
 						equalDOF $node_j $internal_nodeJ 1 2 
 					
 					}
@@ -209,8 +217,12 @@ proc_ref	rackBracing2D	{ Region_ID  frame_ID  *brYpoints *brXpoints *bracings *O
 							write_element $current_bracing $internal_nodeI $internal_nodeJ;
 							###############################
 							
-							equalDOF $node_i $internal_nodeI 1 2									 
-							equalDOF $node_j $internal_nodeJ 1 2  
+							set dx [expr [nodeCoord $node_i 1]-[nodeCoord $node_j 1]]
+							set dy [expr [nodeCoord $node_i 2]-[nodeCoord $node_j 2]] 			
+							element zeroLength [expr $current_bracing*$InternalEle_ID] $node_i $internal_nodeI -mat $axialMat $rigidMat -dir 1 2\
+																 -orient $dx $dy 0\
+																		  0  $dy 0							 
+							equalDOF $node_j $internal_nodeJ 1 2 
 						} else {
 							
 							incr current_node;
@@ -228,7 +240,11 @@ proc_ref	rackBracing2D	{ Region_ID  frame_ID  *brYpoints *brXpoints *bracings *O
 							write_element $current_bracing $imp_nod $internal_nodeJ;
 							###############################
 							
-							equalDOF $node_i $internal_nodeI 1 2									 
+							set dx [expr [nodeCoord $node_i 1]-[nodeCoord $node_j 1]]
+							set dy [expr [nodeCoord $node_i 2]-[nodeCoord $node_j 2]] 			
+							element zeroLength [expr $current_bracing*$InternalEle_ID] $node_i $internal_nodeI -mat $axialMat $rigidMat -dir 1 2\
+																	 -orient $dx $dy 0\
+																			  0  $dy 0							 
 							equalDOF $node_j $internal_nodeJ 1 2 
 										
 						}

@@ -52,6 +52,11 @@
 	set S275	275;		#								(MAT)
 	set S350	350;		#								(MAT)
 
+########################## AXIAL MATS  ##########################	
+	set AxialBot 4;			#								(MAT)
+	set AxialTop 5;			#								(MAT)
+	set RigidMat 6;			#								(MAT)
+	
 ####################################################################
 ####################################################################
 
@@ -59,13 +64,13 @@
 ###################################################################################################
 #          Basic Materials
 ###################################################################################################
-	uniaxialMaterial	Steel02 	$S355	[expr 355*$MPa]	[expr 210*$GPa]	0.1		\
+	uniaxialMaterial	Steel02 	$S355	[expr 396*$MPa]	[expr 210*$GPa]	0.1		\
 									10	0.925	0.15
 						
-	uniaxialMaterial	Steel02 	$S275	[expr 275*$MPa]	[expr 210*$GPa]	0.1		\
+	uniaxialMaterial	Steel02 	$S275	[expr 349*$MPa]	[expr 210*$GPa]	0.1		\
 									10	0.925	0.15
 									
-	uniaxialMaterial	Steel02 	$S350	[expr 350*$MPa]	[expr 210*$GPa]	0.1		\
+	uniaxialMaterial	Steel02 	$S350	[expr 3380*$MPa]	[expr 210*$GPa]	0.1		\
 									10	0.925	0.15
 
 	
@@ -228,6 +233,14 @@ add2DElasticSectionProperties $UFrameDiag7 $E_hor7  $A_hor7 $Iy_hor7;	#to take i
 AngleSection $UFrameDiag7 $S355 [expr 50*$mm] [expr 64*$mm] [expr 2*$mm] [expr 2*$mm];
 
 uniaxialMaterial Elastic $SpringPinned [expr 1e-9*$kN*$m];
+
+
+########################## AXIAL MATS  ##########################
+
+uniaxialMaterial Elastic $AxialBot [expr 3516*$kN/$m];
+uniaxialMaterial Elastic $AxialTop [expr 3642*$kN/$m];
+uniaxialMaterial Elastic $RigidMat [expr 1e9*$kN/$m];
+
 
 ################ CA BEAMS ################
 set E_RL10	[expr 210.0*$GPa];
