@@ -256,6 +256,9 @@ proc_ref	frameFiberBracing	{ Region_ID  frame_ID  *brYpoints *brXpoints *bracing
 	if {$imp ne 0} {
 		addNodes [expr $RegionNode_ID+1]	[expr $current_node];
 		addExternalNodes [expr $RegionNode_ID+1]	[expr $current_node];
+	} else {
+		addNodes NULL	NULL;
+		addExternalNodes NULL	NULL;
 	}
 
 CloseRegion;

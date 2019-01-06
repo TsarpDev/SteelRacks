@@ -550,7 +550,7 @@ if {$analysisType == "pushover"} {
 			
 	}
 
-	RunPushover2Converge $topNode1 [expr 350.0*$mm] [expr 0.01*$mm] 
+	RunPushover2Converge $topNode1 [expr 192.362*$mm] [expr 0.03*$mm] 
 
 }
 

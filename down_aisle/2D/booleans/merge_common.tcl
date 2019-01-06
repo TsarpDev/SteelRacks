@@ -71,7 +71,7 @@ proc_ref merge_common {	Master_ID Slave_ID 	{ Negligible 1e-3 } } {
 #          delete common slave element      #
 	
 	
-	
+if 0 {	
 	## waste of time, it should loop only in region elements, should track
 	foreach i_ex $common {
 		set i [lindex $i_ex 1];
@@ -98,6 +98,7 @@ proc_ref merge_common {	Master_ID Slave_ID 	{ Negligible 1e-3 } } {
 		}
 		
 	}
+}
 
 	
 	add_merged_regions $Master_ID $Slave_ID;
