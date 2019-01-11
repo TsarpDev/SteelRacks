@@ -9,11 +9,11 @@
 	set currentSection	1000;	#(SEC)
 
 ## uprights	 
-	set SecCol1 1;			# lower bracing upright			(YOURS) (SEC)
-	set SecCol1a 2;			# reinforced bracing upright	(YOURS) (SEC)
-	set SecCol2 3;			# upper bracing upright			(YOURS) (SEC)
-	set SecCol3 4;			# lower pallet upright			(YOURS) (SEC)
-	set SecCol4 5;			# upper pallet upright			(YOURS) (SEC)
+	set SecCol1 1;			# lower bracing upright 4mm		(YOURS) (SEC)
+	set SecCol1a 2;			# reinforced bracing upright 	(YOURS) (SEC)
+	set SecCol2 3;			# upper bracing upright 2.5mm	(YOURS) (SEC)
+	set SecCol3 4;			# lower pallet upright 3mm		(YOURS) (SEC)
+	set SecCol4 5;			# upper pallet upright 2mm		(YOURS) (SEC)
 	
 ## beams
 	set SecBeam8 6;			# normal beam					(YOURS)
@@ -70,7 +70,7 @@
 	uniaxialMaterial	Steel02 	$S275	[expr 349*$MPa]	[expr 210*$GPa]	0.1		\
 									10	0.925	0.15
 									
-	uniaxialMaterial	Steel02 	$S350	[expr 3380*$MPa]	[expr 210*$GPa]	0.1		\
+	uniaxialMaterial	Steel02 	$S350	[expr 380*$MPa]	[expr 210*$GPa]	0.1		\
 									10	0.925	0.15
 
 	
@@ -80,11 +80,20 @@
 
 ## Upright axial resistances
 
-set Nr1		[expr 528*$kN];			# this is for 1650 mm (EXPR)
-set Nr2		[expr 247*$kN];			# this is for 1650 mm (ABQS)
-set Nr3		[expr 316.472*$kN];		# this is for 1650 mm (ABQS)
-set Nr4		[expr 155.51*$kN];		# this is for 1650 mm (EXPR)
+set Nr1_db		[expr 528*$kN];			# this is for 1650 mm (EXPR)
+set Nr2_db		[expr 247*$kN];			# this is for 1650 mm (ABQS)
+set Nr3_db		[expr 316.472*$kN];		# this is for 1650 mm (ABQS)
+set Nr4_db		[expr 155.51*$kN];		# this is for 1650 mm (EXPR)
 
+set Nr1_b		[expr 348.91*$kN];		# this is for 2625 mm (GIUSEPPE)
+set Nr2_b		[expr 205.49*$kN];		# this is for 2625 mm (GIUSEPPE)
+set Nr3_b		[expr 268.67*$kN];		# this is for 2625 mm (GIUSEPPE)
+set Nr4_b		[expr 175.71*$kN];		# this is for 2625 mm (GIUSEPPE)
+
+set Nr1 [expr -min($Nr1_db,$Nr1_b)];
+set Nr2 [expr -min($Nr2_db,$Nr2_b)];
+set Nr3 [expr -min($Nr3_db,$Nr3_b)];
+set Nr4 [expr -min($Nr4_db,$Nr4_b)];
 
 ###################################################################################################
 #          Define Sections
@@ -93,17 +102,32 @@ set Nr4		[expr 155.51*$kN];		# this is for 1650 mm (EXPR)
 ################ COLUMNS ################
 set E_column1 [expr 210.0*$GPa];
 set A_column1 [expr 1720.0*$mm2];
+set Aeff_column1 [expr 1455.6*$mm2];
 set Iz_column1 [expr 3930538.0*$mm4];	
 set Iy_column1 [expr 3846887.0*$mm4];	
+set Nr1_pos	[expr $Aeff_column1*380*$MPa];
 
 set flexibilityMultiplier 2.0;
 addElasticSection $SecCol1
 add2DElasticSectionProperties $SecCol1 $E_column1  $A_column1 $Iy_column1;
 incr currentAxialMat		
-#uniaxialMaterial ElasticPP $currentAxialMat [expr $flexibilityMultiplier*$E_column1*$A_column1]	[expr $Nr1/($flexibilityMultiplier*$E_column1*$A_column1)];
-uniaxialMaterial MultiLinear $currentAxialMat [expr $Nr1/($flexibilityMultiplier*$E_column1*$A_column1)] $Nr1\
-											[expr 3.0*$Nr1/($flexibilityMultiplier*$E_column1*$A_column1)] [expr 0.1*$Nr1]\
-											[expr 4.0*$Nr1/($flexibilityMultiplier*$E_column1*$A_column1)] [expr 0.1*$Nr1];
+
+uniaxialMaterial Pinching4 $currentAxialMat $Nr1_pos [expr $Nr1_pos/($flexibilityMultiplier*$E_column1*$A_column1)]\
+											[expr 1.1*$Nr1_pos] [expr 3.0*$Nr1_pos/($flexibilityMultiplier*$E_column1*$A_column1)]\
+											[expr 1.1*$Nr1_pos] [expr 4.0*$Nr1_pos/($flexibilityMultiplier*$E_column1*$A_column1)]\
+											[expr 1.1*$Nr1_pos] [expr 5.0*$Nr1_pos/($flexibilityMultiplier*$E_column1*$A_column1)]\
+											$Nr1 [expr $Nr1/($flexibilityMultiplier*$E_column1*$A_column1)]\
+											[expr 0.99*$Nr1] [expr 2.0*$Nr1/($flexibilityMultiplier*$E_column1*$A_column1)]\
+											[expr 0.1*$Nr1] [expr 4.0*$Nr1/($flexibilityMultiplier*$E_column1*$A_column1)]\
+											[expr 0.1*$Nr1] [expr 5.0*$Nr1/($flexibilityMultiplier*$E_column1*$A_column1)]\
+												0.3 0.6 0.0 \
+												0.3 0.6 0.0 \
+												0.0 0.0 0.0 0.0 0.0 \
+												0.0 0.0 0.0 0.0 0.0 \
+												0. 0. 0. 0. 0. \
+												10. "energy"; 
+											
+											
 incr currentSection
 section Elastic $currentSection $E_column1  [expr $flexibilityMultiplier*$A_column1] $Iy_column1;
 
@@ -112,6 +136,7 @@ section Aggregator $SecCol1 $currentAxialMat P  -section $currentSection
 
 set E_column1a [expr 210.0*$GPa];
 set A_column1a [expr 3443.0*$mm2];
+set Aeff_column1a [expr 2987*$mm2];
 set Iz_column1a [expr 9032635.0*$mm4];	
 set Iy_column1a [expr 6767412.0*$mm4];	
 addElasticSection $SecCol1a
@@ -121,15 +146,28 @@ section Elastic $SecCol1a $E_column1a  $A_column1a $Iy_column1a;
 
 set E_column2 [expr 210.0*$GPa];
 set A_column2 [expr 1070.0*$mm2];
+set Aeff_column2 [expr 800.9*$mm2];
 set Iz_column2 [expr 2488602.0*$mm4];	
 set Iy_column2 [expr 2396250.0*$mm4];	
+set Nr2_pos	[expr $Aeff_column2*380*$MPa];
 addElasticSection $SecCol2
 add2DElasticSectionProperties $SecCol2 $E_column2  $A_column2 $Iy_column2;
 incr currentAxialMat
 #uniaxialMaterial ElasticPP $currentAxialMat [expr $flexibilityMultiplier*$E_column2*$A_column2]	[expr $Nr2/($flexibilityMultiplier*$E_column2*$A_column2)];
-uniaxialMaterial MultiLinear $currentAxialMat [expr $Nr2/($flexibilityMultiplier*$E_column2*$A_column2)] $Nr2\
-											[expr 3.0*$Nr2/($flexibilityMultiplier*$E_column2*$A_column2)] [expr 0.1*$Nr2]\
-											[expr 4.0*$Nr2/($flexibilityMultiplier*$E_column2*$A_column2)] [expr 0.1*$Nr2];
+uniaxialMaterial Pinching4 $currentAxialMat $Nr2_pos [expr $Nr2_pos/($flexibilityMultiplier*$E_column2*$A_column2)]\
+											[expr 1.1*$Nr2_pos] [expr 3.0*$Nr2_pos/($flexibilityMultiplier*$E_column2*$A_column2)]\
+											[expr 1.1*$Nr2_pos] [expr 4.0*$Nr2_pos/($flexibilityMultiplier*$E_column2*$A_column2)]\
+											[expr 1.1*$Nr2_pos] [expr 5.0*$Nr2_pos/($flexibilityMultiplier*$E_column2*$A_column2)]\
+											$Nr2 [expr $Nr2/($flexibilityMultiplier*$E_column2*$A_column2)]\
+											[expr 0.99*$Nr2] [expr 2.0*$Nr2/($flexibilityMultiplier*$E_column2*$A_column2)]\
+											[expr 0.1*$Nr2] [expr 4.0*$Nr2/($flexibilityMultiplier*$E_column2*$A_column2)]\
+											[expr 0.1*$Nr2] [expr 5.0*$Nr2/($flexibilityMultiplier*$E_column2*$A_column2)]\
+												0.3 0.6 0.0 \
+												0.3 0.6 0.0 \
+												0.0 0.0 0.0 0.0 0.0 \
+												0.0 0.0 0.0 0.0 0.0 \
+												0. 0. 0. 0. 0. \
+												10. "energy"; 
 incr currentSection
 section Elastic $currentSection $E_column2  [expr $flexibilityMultiplier*$A_column2] $Iy_column2;
 section Aggregator $SecCol2 $currentAxialMat P  -section $currentSection
@@ -137,14 +175,27 @@ section Aggregator $SecCol2 $currentAxialMat P  -section $currentSection
 
 set E_column3 [expr 210.0*$GPa];
 set A_column3 [expr 1290.0*$mm2];
+set Aeff_column3 [expr 1129.0*$mm2];
 set Iz_column3 [expr 2982693.0*$mm4];	
 set Iy_column3 [expr 2887410.0*$mm4];	
+set Nr3_pos	[expr $Aeff_column3*380*$MPa];
 addElasticSection $SecCol3
 add2DElasticSectionProperties $SecCol3 $E_column3  $A_column3 $Iy_column3;
 incr currentAxialMat
-uniaxialMaterial MultiLinear $currentAxialMat [expr $Nr3/($flexibilityMultiplier*$E_column3*$A_column3)] $Nr3\
-											[expr 3.0*$Nr3/($flexibilityMultiplier*$E_column3*$A_column3)] [expr 0.1*$Nr3]\
-											[expr 4.0*$Nr3/($flexibilityMultiplier*$E_column3*$A_column3)] [expr 0.1*$Nr3];
+uniaxialMaterial Pinching4 $currentAxialMat $Nr3_pos [expr $Nr3_pos/($flexibilityMultiplier*$E_column3*$A_column3)]\
+											[expr 1.1*$Nr3_pos] [expr 3.0*$Nr3_pos/($flexibilityMultiplier*$E_column3*$A_column3)]\
+											[expr 1.1*$Nr3_pos] [expr 4.0*$Nr3_pos/($flexibilityMultiplier*$E_column3*$A_column3)]\
+											[expr 1.1*$Nr3_pos] [expr 5.0*$Nr3_pos/($flexibilityMultiplier*$E_column3*$A_column3)]\
+											$Nr3 [expr $Nr3/($flexibilityMultiplier*$E_column3*$A_column3)]\
+											[expr 0.99*$Nr3] [expr 2.0*$Nr3/($flexibilityMultiplier*$E_column3*$A_column3)]\
+											[expr 0.1*$Nr3] [expr 4.0*$Nr3/($flexibilityMultiplier*$E_column3*$A_column3)]\
+											[expr 0.1*$Nr3] [expr 5.0*$Nr3/($flexibilityMultiplier*$E_column3*$A_column3)]\
+												0.3 0.6 0.0 \
+												0.3 0.6 0.0 \
+												0.0 0.0 0.0 0.0 0.0 \
+												0.0 0.0 0.0 0.0 0.0 \
+												0. 0. 0. 0. 0. \
+												10. "energy";
 #uniaxialMaterial ElasticPP $currentAxialMat [expr $flexibilityMultiplier*$E_column3*$A_column3]	[expr $Nr3/($flexibilityMultiplier*$E_column3*$A_column3)];
 
 incr currentSection
@@ -154,14 +205,27 @@ section Aggregator $SecCol3 $currentAxialMat P  -section $currentSection
 
 set E_column4 [expr 210.0*$GPa];
 set A_column4 [expr 860.0*$mm2];
+set Aeff_column4 [expr 713*$mm2];
 set Iz_column4 [expr 2011487.0*$mm4];	
 set Iy_column4 [expr 1925642.0*$mm4];
+set Nr4_pos	[expr $Aeff_column4*380*$MPa];
 addElasticSection $SecCol4
 add2DElasticSectionProperties $SecCol4 $E_column4  $A_column4 $Iy_column4;
 incr currentAxialMat
-uniaxialMaterial MultiLinear $currentAxialMat [expr $Nr4/($flexibilityMultiplier*$E_column4*$A_column4)] $Nr4\
-											[expr 3.0*$Nr4/($flexibilityMultiplier*$E_column4*$A_column4)] [expr 0.1*$Nr4]\
-											[expr 4.0*$Nr4/($flexibilityMultiplier*$E_column4*$A_column4)] [expr 0.1*$Nr4];
+uniaxialMaterial Pinching4 $currentAxialMat $Nr4_pos [expr $Nr4_pos/($flexibilityMultiplier*$E_column4*$A_column4)]\
+											[expr 1.1*$Nr4_pos] [expr 3.0*$Nr4_pos/($flexibilityMultiplier*$E_column4*$A_column4)]\
+											[expr 1.1*$Nr4_pos] [expr 4.0*$Nr4_pos/($flexibilityMultiplier*$E_column4*$A_column4)]\
+											[expr 1.1*$Nr4_pos] [expr 5.0*$Nr4_pos/($flexibilityMultiplier*$E_column4*$A_column4)]\
+											$Nr4 [expr $Nr4/($flexibilityMultiplier*$E_column4*$A_column4)]\
+											[expr 0.99*$Nr4] [expr 2.0*$Nr4/($flexibilityMultiplier*$E_column4*$A_column4)]\
+											[expr 0.1*$Nr4] [expr 4.0*$Nr4/($flexibilityMultiplier*$E_column4*$A_column4)]\
+											[expr 0.1*$Nr4] [expr 5.0*$Nr4/($flexibilityMultiplier*$E_column4*$A_column4)]\
+												0.3 0.6 0.0 \
+												0.3 0.6 0.0 \
+												0.0 0.0 0.0 0.0 0.0 \
+												0.0 0.0 0.0 0.0 0.0 \
+												0. 0. 0. 0. 0. \
+												10. "energy";
 #uniaxialMaterial ElasticPP $currentAxialMat [expr $flexibilityMultiplier*$E_column4*$A_column4]	[expr $Nr4/($flexibilityMultiplier*$E_column4*$A_column4)];
 
 incr currentSection

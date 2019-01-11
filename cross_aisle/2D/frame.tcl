@@ -545,12 +545,14 @@ if {$analysisType == "pushover"} {
 			for {set i 1} {$i<=$Nframes} {incr i} {
 				#SPO_x_triangular $i $x0 1.0
 				#SPO_x_eigen {Region_ID X_coord Fx_top modeNum {Negligible 1e-3} }
-				SPO_x_eigen2D $i $x0 $Fx_top 1
+				for {set j 0} {$j<[llength $Xpoints]} {incr j} {
+					SPO_x_eigen2D $i [lindex $Xpoints $j] $Fx_top 1
+				}
 			}
 			
 	}
 
-	RunPushover2Converge $topNode1 [expr 192.362*$mm] [expr 0.03*$mm] 
+	RunPushover2Converge $topNode1 [expr 500.0*$mm] [expr 0.01*$mm] 
 
 }
 
